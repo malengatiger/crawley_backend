@@ -2,7 +2,7 @@ package com.boha.crawley.services;
 
 import com.boha.crawley.data.DomainData;
 import com.boha.crawley.data.DomainDataBag;
-import com.boha.crawley.data.SearchText;
+import com.boha.crawley.data.PossibleCompanyNames;
 import com.google.api.core.ApiFuture;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.CollectionReference;
@@ -63,8 +63,8 @@ public class FirebaseService {
         logger.info(mm + " @PostConstruct: FirebaseApp.initialized! \uD83D\uDD35\uD83D\uDD35");
 
     }
-    static final String domainData = "domainData";
-    static final String searchData = "searchData";
+    static final String domainData = "companyData";
+    static final String searchData = "possibleCompanies";
 
     public void addDomainData(DomainDataBag domainDataBag) throws ExecutionException, InterruptedException {
         logger.info(mm + " adding stealth data to Firestore ...");
@@ -75,18 +75,19 @@ public class FirebaseService {
             var res = collectionRef.add(data);
             cnt++;
             logger.info(mm + " domain data added #" + cnt
-                    + " record to Firestore: \uD83C\uDF0D " + data.getDomain() + " - " + res.get().getPath());
+                    + " record to Firestore: \uD83C\uDF0D "
+                    + data.getDomain() + " - " + res.get().getPath());
 
         }
     }
-    public SearchText addSearchText(List<String> texts) throws ExecutionException, InterruptedException {
+    public PossibleCompanyNames addCompanyNames(List<String> texts) throws ExecutionException, InterruptedException {
         logger.info(mm + " adding search data to Firestore ...");
         CollectionReference collectionRef = firestore.collection(searchData);
 
-        SearchText st = new SearchText();
+        PossibleCompanyNames st = new PossibleCompanyNames();
         st.setDate(new DateTime().toDateTimeISO().toString());
         st.setSearchId(UUID.randomUUID().toString());
-        st.setSearchTexts(texts);
+        st.setCompanyNames(texts);
 
         var res = collectionRef.add(st);
         logger.info(mm + " search data added to Firestore: " + res.get().getPath());

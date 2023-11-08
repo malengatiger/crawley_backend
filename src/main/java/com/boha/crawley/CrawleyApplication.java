@@ -14,6 +14,9 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -56,24 +59,18 @@ public class CrawleyApplication implements ApplicationListener<ApplicationReadyE
 
         logger.info(mm +
                 " \uD83D\uDD35\uD83D\uDD35 Total Endpoints: " + map.size());
+
+        List<String> pints = new ArrayList<>();
         for (HandlerMethod info : map.values()) {
             var pc = info.getMethod().getName();
             var pp = info.getMethod().getParameterCount();
-            logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 endPoint: " + pc + " parameters: " + pp);
+            pints.add(pc + " - parameters: " + pp);
         }
-//        try {
-////            var det = whoIsService.getDomainDetails("apple.com");
-////            logger.info(mm + " whoIs owner: " + det.getRegistrant().getOrganization());
-////            var names = articleService.extractCompanyNames(text);
-////            for (String name : names) {
-////                logger.info(mm + mm + " test name found: " + name);
-////            }
-//////            chatGPTService.saySomething(
-//////                    "Tell me how to get to Johannesburg, South Africa from Cleveland, Ohio");
-////            List<DomainData> list = articleService.parseArticles();
-////            logger.info(mm + " DomainData created: " + list.size() + "  \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B");
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
+        Collections.sort(pints);
+        for (String pint : pints) {
+            logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 endPoint: " + pint);
+        }
+
+//
     }
 }

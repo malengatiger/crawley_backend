@@ -9,10 +9,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -88,7 +85,7 @@ public class MainController {
     }
 
     @PostMapping("/uploadArticles")
-    public ResponseEntity<Object> uploadArticles(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<Object> uploadArticles(@RequestParam("file") @RequestPart MultipartFile file) throws IOException {
         // Check if the file is empty
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(

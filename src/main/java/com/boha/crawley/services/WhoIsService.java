@@ -60,12 +60,12 @@ public class WhoIsService {
                     JSONObject obj = new JSONObject(jsonResponse);
                     JSONObject realObj = obj.getJSONObject("WhoisRecord");
                     wir = G.fromJson(realObj.toString(), WhoIsRecord.class);
-
-                    logger.info(mm + " \uD83C\uDF0D WhoIs response: " +
-                            G.toJson(wir) + " \uD83C\uDF0D\uD83C\uDF0D\uD83C\uDF0D");
+                    logger.info(mm + " \uD83C\uDF0D WhoIs response returned: " +
+                              " \uD83C\uDF0D\uD83C\uDF0D\uD83C\uDF0D");
                 }
             }
         } catch (IOException e) {
+            logger.severe(" WoIs call fucked up! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34");
             e.printStackTrace();
         }
         return wir;
