@@ -3,6 +3,7 @@ package com.boha.crawley.services;
 import com.boha.crawley.data.whois.WhoIsRecord;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import jakarta.annotation.PostConstruct;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @Service
@@ -21,8 +23,18 @@ public class WhoIsService {
             " WhoIsService: \uD83C\uDF4E";
     @Value("${whoIsApiKey}")
     private String whoIsApiKey;
-    OkHttpClient client = new OkHttpClient();
+    OkHttpClient client;
 
+    @PostConstruct
+    private void init() {
+        logger.info(mm + " initializing OkHttpClient");
+        client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS) // Set the maximum time to establish a connection
+                .readTimeout(600, TimeUnit.SECONDS) // Set the maximum time to read data from the server
+                .writeTimeout(600, TimeUnit.SECONDS) // Set the maximum time to write data to the server
+                .retryOnConnectionFailure(true)
+                .build();
+    }
     static final String url = "https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=";
     public WhoIsRecord getDomainDetails(String domain) throws IOException {
         StringBuilder sb = new StringBuilder();

@@ -2,16 +2,19 @@ package com.boha.crawley;
 
 import com.boha.crawley.services.ArticleService;
 import com.boha.crawley.services.ChatGPTService;
-import com.boha.crawley.data.DomainData;
 import com.boha.crawley.services.WhoIsService;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 @SpringBootApplication
@@ -19,10 +22,12 @@ import java.util.logging.Logger;
 public class CrawleyApplication implements ApplicationListener<ApplicationReadyEvent> {
     static final Logger logger = Logger.getLogger(CrawleyApplication.class.getSimpleName());
     static final String mm = "\uD83C\uDF4E \uD83C\uDF4E \uD83C\uDF4E CrawleyApplication: ";
+
     public static void main(String[] args) {
         logger.info("CrawleyApplication starting ...  \uD83E\uDD22 \uD83E\uDD22 \uD83E\uDD22 \uD83E\uDD22");
         SpringApplication.run(CrawleyApplication.class, args);
-        logger.info(mm + " CrawleyApplication started up!  \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B");
+        logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 CrawleyApplication started up! " +
+                " \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B \n");
 
     }
 
@@ -43,19 +48,32 @@ public class CrawleyApplication implements ApplicationListener<ApplicationReadyE
                 "Also, IBM is good at working with other companies such as Motorola and Baidu. " +
                 "Also, a camp such Harties Resorts are booming while selling shit to Ford and other outfits such as Johnson LLC and Frank Renwick Inc";
 
-        try {
-              var det = whoIsService.getDomainDetails("apple.com");
-              logger.info(mm + " whoIs owner: " + det.getRegistrant().getOrganization());
-//            var names = articleService.extractCompanyNames(text);
-//            for (String name : names) {
-//                logger.info(mm + mm + " test name found: " + name);
-//            }
-////            chatGPTService.saySomething(
-////                    "Tell me how to get to Johannesburg, South Africa from Cleveland, Ohio");
-//            List<DomainData> list = articleService.parseArticles();
-//            logger.info(mm + " DomainData created: " + list.size() + "  \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        ApplicationContext applicationContext = event.getApplicationContext();
+        RequestMappingHandlerMapping requestMappingHandlerMapping = applicationContext
+                .getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);
+        Map<RequestMappingInfo, HandlerMethod> map = requestMappingHandlerMapping
+                .getHandlerMethods();
+
+        logger.info(mm +
+                " \uD83D\uDD35\uD83D\uDD35 Total Endpoints: " + map.size());
+        for (HandlerMethod info : map.values()) {
+            var pc = info.getMethod().getName();
+            var pp = info.getMethod().getParameterCount();
+            logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 endPoint: " + pc + " parameters: " + pp);
         }
+//        try {
+////            var det = whoIsService.getDomainDetails("apple.com");
+////            logger.info(mm + " whoIs owner: " + det.getRegistrant().getOrganization());
+////            var names = articleService.extractCompanyNames(text);
+////            for (String name : names) {
+////                logger.info(mm + mm + " test name found: " + name);
+////            }
+//////            chatGPTService.saySomething(
+//////                    "Tell me how to get to Johannesburg, South Africa from Cleveland, Ohio");
+////            List<DomainData> list = articleService.parseArticles();
+////            logger.info(mm + " DomainData created: " + list.size() + "  \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B \uD83D\uDC9B");
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
     }
 }

@@ -126,7 +126,11 @@ public class ArticleService {
      *
      * @return List<DomainData>
      */
-    public List<DomainData> parseArticles() throws Exception {
+
+    public File parseUploadedFile(File articleFile) throws Exception {
+        return parseArticles(articleFile);
+    }
+    public File parseArticles(File articleFile ) throws Exception {
         logger.info(mm + " parse Articles starting ..........");
         long startTime = System.currentTimeMillis();
         List<DomainData> dataList = new ArrayList<>();
@@ -135,17 +139,19 @@ public class ArticleService {
 
         //
         setExclusionsMap();
-        File file = firebaseService.downloadFile();
+        if (articleFile == null) {
+            articleFile= firebaseService.downloadFile();
+        }
         logger.info(mm + mm + " parseArticles: we have a file!! ");
-        if (!file.exists()) {
+        if (!articleFile.exists()) {
             throw new RuntimeException();
         }
 
-        logger.info(mm + " articles file: " + file.getAbsolutePath()
-                + " length: " + file.length() + " bytes");
+        logger.info(mm + " articles file: " + articleFile.getAbsolutePath()
+                + " length: " + articleFile.length() + " bytes");
 
         try {
-            var articles = getArticlesFromFile(file);
+            var articles = getArticlesFromFile(articleFile);
             for (Article article : articles) {
                 if (filterLink(article.link())) {
                     var bag = extractDataFromPage(article.link());
@@ -202,7 +208,7 @@ public class ArticleService {
         String minutes = decimalFormat.format(elapsedTimeMinutes);
         logger.info("\uD83C\uDF4A\uD83C\uDF4A\uD83C\uDF4A Extraction complete: "
                 + minutes + " elapsed minutes; \uD83E\uDD4F domainAndURLS: " + dataList.size());
-        return dataList;
+        return file1;
     }
 
     StanfordCoreNLP pipeline;

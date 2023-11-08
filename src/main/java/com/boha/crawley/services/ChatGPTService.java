@@ -1,6 +1,7 @@
 package com.boha.crawley.services;
 
 import com.boha.crawley.data.ChatRequest;
+import com.boha.crawley.data.ChatResponse;
 import com.boha.crawley.data.Message;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -19,7 +20,7 @@ public class ChatGPTService {
     static final String mm = "\uD83C\uDF6F ChatGPTService: \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F";
 
     private static final String API_URL =
-            "https://api.openai.com/v1/chat/completions" ;
+            "https://api.openai.com/v1/chat/completions";
     static final String apiKey = "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";
     private final OkHttpClient client;
     static final Gson G = new GsonBuilder().setPrettyPrinting().create();
@@ -27,13 +28,13 @@ public class ChatGPTService {
     public ChatGPTService() {
         client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS) // Set the maximum time to establish a connection
-                .readTimeout(300, TimeUnit.SECONDS) // Set the maximum time to read data from the server
-                .writeTimeout(300, TimeUnit.SECONDS) // Set the maximum time to write data to the server
+                .readTimeout(600, TimeUnit.SECONDS) // Set the maximum time to read data from the server
+                .writeTimeout(600, TimeUnit.SECONDS) // Set the maximum time to write data to the server
                 .retryOnConnectionFailure(true)
                 .build();
     }
 
-    public void saySomething(String prompt) {
+    public ChatResponse saySomething(String prompt) {
         logger.info(mm + " saySomething to ChatGPT ... \uD83D\uDD34 "
                 + prompt + " \uD83D\uDD34");
 
@@ -45,7 +46,7 @@ public class ChatGPTService {
         messageList.add(msg);
         cr.setMessages(messageList);
         cr.setModel("gpt-3.5-turbo");
-
+        ChatResponse chatResponse = null;
         try {
             MediaType mediaType = MediaType.parse("application/json");
             RequestBody body = RequestBody.create(mediaType,
@@ -64,6 +65,7 @@ public class ChatGPTService {
                 assert response.body() != null;
                 responseBody = response.body().string();
             }
+            chatResponse = G.fromJson(responseBody, ChatResponse.class);
             logger.info(mm + mm + mm + " ChatGPT has responded!");
             logger.info(responseBody);
             logger.info(mm + " end of ChatGPT response!");
@@ -71,6 +73,6 @@ public class ChatGPTService {
             logger.severe("\uD83D\uDC7F\uD83D\uDC7F\uD83D\uDC7F " + e.getMessage());
             e.printStackTrace();
         }
-
+        return chatResponse;
     }
 }
