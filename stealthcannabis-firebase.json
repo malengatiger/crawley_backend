@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "stealthcannabis",
+  "private_key_id": "3b21f0aae9a9acc5df2c1b727ec2bafa99568ff3",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCTapEzuh+9iXVM\nXaGvvvtq9ZfcVMjBEkC2Tp4EFTCNdCD+A9r35KxUIBb9Q/FaORvQHk0vrpfLg7XK\n1ot+2g060hwqZB9NON7R5bKSCog46qTW8rTLYw1Qq/GMCxRAmeCCKnLA3pzFKz9K\noH9gsm5aWR5ZdurTWXLybehrgd/HGRa0HtE++ksjRbNanEw7p4pKIeKZUZT4xnQw\n5sQQNunqVm4Sj2CwgVnwFiWQH7vZxSLIdKP34gFOuvLfhnU9N2+OvpYQUMuSXNg/\nxjcOSmMjh5QiPVlCbphpnMZBoOJmKL7I7DcZsJooeim3NEdVUWgNGzh1vrJfSDcg\nH6HoYU2JAgMBAAECggEAAOc2avsJ6/6iOkTGFqZJX2bDc3LN1PhkYif1Ggim5rnD\nPhWRtnK/SnFbME0yfSDyfma0ubUWNYwRzz0og/wFXseDOB0rX6A4mQ/3iInGoYhw\nsidXRUcIdNN/qO63i2xHhscIc2cbWu4yID/MVZabErpiTPFe5hfX+pIcdw30n1rr\nfWnp0ZxtwwxcgO7A4vitqeT42k42pFo/Q8DIA0QyEuUmMS1CjFNzuoIGfqmJJBab\n4eSaDnRgmOhDdxPmDOkYkWsUmDnO5dBXcrwQbRGb987PNDcFiC9zyj2vfyDUP7zW\ndjZ1wsksufdxnCcVRceZBXPDXo4dSJD1Z5QGrFlI8QKBgQDDb2dGxfhOJxtZJXvI\n6OLG4tsH5LlpZSJg5cFHYqkHchIy+zSzTbcvBulKDAfcHrujUd4biPnghRrdn/vT\nNnDrAdgh7vShUbQ7lUqUa487G53+z+eGNjFtmcj/bNm8xeTWTE5NoUsdJN3SXOwH\nWsMNkPnPVrg33Wxz9++esx5heQKBgQDBGaWm/QSel3JRGBjdpqnFkpOq0oSZMlKp\nqgTx6ZeM0XrMiT0cLCp0IRp+aCoK6R4UBALO+eg9Cq6vWrF1eHC/Gh9tm2/Rrh7D\nB+ktx7QajSWebGEs1D0OMHNWGaKMkR2THa9RikoYz0kGn2pDms/lG8GBp+v6l2Gn\njwIG497YkQKBgQCuyAvyBI0Lv/e6Y0ZwKK7ftfSy+4BCXNtBE1kmsXp/mSnjhDve\ne4tvOFwdB+NjneyrpETiFT975y5etHxvqYmU8yJLPrxzJXHts5duYz9GWm2TfHYP\n1pmf7mAO51dXdxgv+zAwRya5GsZzIv1HmolEsbpoDqNT+ufKUxtur7xk6QKBgQCj\nXuaGtHRvFOSz9XY8OSBTtuJWWQu0bR4Ay4apgR8mFakWWVopdrhoTgWTQt+nIXnA\nJ3CU2lyBIIOQemO/ZinFlP1YB3UAapc+HHhMsjQPbrGQKlPA0MPjOFysUL30vWXP\nLQNCMoTkHqPDBaarEdSoGuaJop+FAQSu9dAaMjo88QKBgQCtp4m3krvQo64iw8MH\nL61VrE4bCKoHUrbnOHCcxyTurKH4+vpTN/34XExK6/W7aHvVBlV1WJGGke47QiLg\n4iX9CejR0TzNQQ//8FtRPmAl9zL/HcxgM4n7rm9O0qLwBhSTlcssb9cmGU3oCEXi\nbfrPo+Cxak2MKJ2lV7S3wghsEg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-hupxf@stealthcannabis.iam.gserviceaccount.com",
+  "client_id": "113381178457068750286",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-hupxf%40stealthcannabis.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

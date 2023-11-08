@@ -1,0 +1,90 @@
+
+export NVM_DIR="/Users/mac/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+
+export PATH="$PATH:/Users/aubreymalabie/development/flutter/bin"
+#export PATH=/Users/aubreymalabie/development/flutter/bin
+
+export PATH=$PATH:~/development/flutter/bin/cache/dart-sdk/bin
+
+export OPENAI_KEY=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
+
+
+export PATH=$PATH:/Users/aubreymalabie/Library/Android/sdk/platform-tools
+export PATH=$PATH:/Users/aubreymalabie/Library/Android/sdk/tools
+export PATH=$PATH:/usr/local/bin
+export PATH=$PATH:~/Documents/apache-maven-3.5.4/bin
+export PATH=${PATH}:/usr/local/mysql/bin/
+export PATH=${PATH}:/usr/local/bin/python3/bin
+export PATH="/Library/PostgreSQL/16/bin/:$PATH"
+
+export PATH=$PATH:/Users/aubreymalabie/google-cloud-sdk/bin
+export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
+export PATH=$PATH:/Users/aubreymalabie/opt/gradle/gradle-5.4.1/bin
+export PATH=$PATH:~/.cargo/bin
+export LANG=en_US.UTF-8
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+export JAVA_HOME=$(/usr/libexec/java_home)
+export PATH=/opt/homebrew/bin:$PATH
+export FLUTTER_ROOT=~/development/flutter
+
+# export GOOGLE_APPLICATION_CREDENTIALS="/Users/mac/WORK/gcp_sandbox.json"
+# export GOOGLE_APPLICATION_CREDENTIALS="/Users/mac/WORK/service-accts/datadriver.json"
+# export GOOGLE_APPLICATION_CREDENTIALS="/Users/mac/WORK/service-accts/newsa3.json"
+# export GOOGLE_APPLICATION_CREDENTIALS="/Users/aubreymalabie/Work/service-accts/latest.json"
+
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/aubreymalabie/Work/service-accts/stealthcannabis-firebase.json"
+
+
+# export GOOGLE_CLOUD_PROJECT=thermal-effort-366015
+export GOOGLE_CLOUD_PROJECT=stealthcannabis
+
+export PATH="/usr/local/opt/ruby/bin:$PATH"
+export LDFLAGS="-L/usr/local/opt/ruby/lib"
+export CPPFLAGS="-I/usr/local/opt/ruby/include"
+export PKG_CONFIG_PATH="/usr/local/opt/ruby/lib/pkgconfig"
+
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+export urlPrefix=http://localhost:8080/
+export intervalInSeconds=10
+export minutesAgo=60
+export periodInMinutes=60
+export upperCount=200
+
+
+export PATH
+code () { VSCODE_CWD="$PWD" open -n -b "com.microsoft.VSCode" --args $*; }
+
+export PATH="$HOME/.cargo/bin:$PATH"
+export LANG=en_US.UTF-8
+export PKG_CONFIG_ALLOW_CROSS=1
+export CARGO_INCREMENTAL=1
+export RUST_LOG=indy=trace
+export RUST_TEST_THREADS=1
+
+
+
+
+
+
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH="$PATH:$HOME/.rvm/bin"
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/aubreymalabie/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/aubreymalabie/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/aubreymalabie/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/aubreymalabie/google-cloud-sdk/completion.zsh.inc'; fi
+
+function node-project {
+  git init
+  npx license $(npm get init.license) -o "$(npm get init.author.name)" > LICENSE
+  npx gitignore node
+  npx covgen "$(npm get init.author.email)"
+  npm init -y
+  git add -A
+  git commit -m "Initial commit"
+}

@@ -1,2 +1,2 @@
 # crawley_backend
-Bacjend to support Kaveh's crawler tool. Using Java Springboot
+Backend to support Kaveh's crawler tool. Using Java Springboot
