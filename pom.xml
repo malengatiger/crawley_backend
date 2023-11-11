@@ -78,19 +78,19 @@
             <scope>compile</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/edu.stanford.nlp/stanford-corenlp -->
-        <dependency>
-            <groupId>edu.stanford.nlp</groupId>
-            <artifactId>stanford-corenlp</artifactId>
-            <version>4.5.5</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>edu.stanford.nlp</groupId>-->
+<!--            <artifactId>stanford-corenlp</artifactId>-->
+<!--            <version>4.5.5</version>-->
+<!--        </dependency>-->
 
 
-        <dependency>
-            <groupId>edu.stanford.nlp</groupId>
-            <artifactId>stanford-corenlp</artifactId>
-            <version>4.5.5</version>
-            <classifier>models</classifier>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>edu.stanford.nlp</groupId>-->
+<!--            <artifactId>stanford-corenlp</artifactId>-->
+<!--            <version>4.5.5</version>-->
+<!--            <classifier>models</classifier>-->
+<!--        </dependency>-->
         <!-- https://mvnrepository.com/artifact/commons-net/commons-net -->
         <dependency>
             <groupId>commons-net</groupId>
@@ -178,6 +178,13 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.thymeleaf/thymeleaf-spring5 -->
+        <dependency>
+            <groupId>org.thymeleaf</groupId>
+            <artifactId>thymeleaf-spring5</artifactId>
+            <version>3.1.2.RELEASE</version>
+        </dependency>
+
 
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-csv -->
         <dependency>
@@ -190,6 +197,31 @@
             <artifactId>opencsv</artifactId>
             <version>5.8</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.sun.mail/javax.mail -->
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+            <version>1.6.2</version>
+
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.cloud/google-cloud-language -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-language</artifactId>
+<!--            <version>2.31.0</version>-->
+        </dependency>
+
+        <!-- Swagger dependencies -->
+<!--        <dependency>-->
+<!--            <groupId>io.springfox</groupId>-->
+<!--            <artifactId>springfox-swagger2</artifactId>-->
+<!--            <version>3.0.0</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>io.springfox</groupId>-->
+<!--            <artifactId>springfox-swagger-ui</artifactId>-->
+<!--            <version>3.0.0</version>-->
+<!--        </dependency>-->
 
 
     </dependencies>
@@ -212,7 +244,7 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>
-                <version>25.1.0</version>
+                <version>26.11.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

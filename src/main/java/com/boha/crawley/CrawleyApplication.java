@@ -6,13 +6,17 @@ import com.boha.crawley.services.WhoIsService;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+//import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,6 +25,13 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 @SpringBootApplication
+@EnableAutoConfiguration
+@EnableWebMvc
+@ComponentScan
+//@ComponentScan(basePackages = "com.boha")
+//@ComponentScan(basePackages = "com.boha.crawley.configs")
+
+//@EnableSwagger2
 
 public class CrawleyApplication implements ApplicationListener<ApplicationReadyEvent> {
     static final Logger logger = Logger.getLogger(CrawleyApplication.class.getSimpleName());
@@ -35,12 +46,12 @@ public class CrawleyApplication implements ApplicationListener<ApplicationReadyE
     }
 
 
-    @Autowired
-    ArticleService articleService;
-    @Autowired
-    ChatGPTService chatGPTService;
-    @Autowired
-    WhoIsService whoIsService;
+//    @Autowired
+//    ArticleService articleService;
+//    @Autowired
+//    ChatGPTService chatGPTService;
+//    @Autowired
+//    WhoIsService whoIsService;
 
     @Override
     public void onApplicationEvent(@NotNull ApplicationReadyEvent event) {

@@ -1,0 +1,78 @@
+package com.boha.crawley.services;
+
+import com.boha.crawley.data.nlp.NLPRequest;
+import com.google.cloud.language.v1.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import jakarta.annotation.PostConstruct;
+import okhttp3.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+import com.google.cloud.language.v1.Document;
+import com.google.cloud.language.v1.Document.Type;
+//POST https://language.googleapis.com/v1/documents:analyzeEntities
+
+@Service
+public class GoogleNLPService {
+    static final Logger logger = Logger.getLogger(GoogleNLPService.class.getSimpleName());
+    static final Gson G = new GsonBuilder().setPrettyPrinting().create();
+    static final String mm = "\uD83C\uDF4E\uD83C\uDF4E\uD83C\uDF4E\uD83C\uDF4E" +
+            " GoogleNLPService: \uD83C\uDF4E";
+    @Value("${freaksWhoIsApiKey}")
+    private String freaksWhoIsApiKey;
+    @Value("${rateLimiter.maxRequestsPerInterval}")
+    private int maxRequestsPerInterval;
+
+    @Value("${rateLimiter.requestInterval}")
+    private long requestInterval;
+    OkHttpClient client;
+
+
+    @PostConstruct
+    private void init() {
+        logger.info(mm + " initializing OkHttpClient .....");
+        client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS) // Set the maximum time to establish a connection
+                .readTimeout(600, TimeUnit.SECONDS) // Set the maximum time to read data from the server
+                .writeTimeout(600, TimeUnit.SECONDS) // Set the maximum time to write data to the server
+                .retryOnConnectionFailure(true)
+                .build();
+    }
+
+    static final String url = "https://language.googleapis.com/v1/documents:analyzeEntities";
+    RequestRateLimiter requestRateLimiter;
+    public List<String> getPossibleNames(List<String> strings) throws Exception {
+        requestRateLimiter = new RequestRateLimiter(maxRequestsPerInterval, requestInterval);
+        List<String> list = new ArrayList<>();
+
+        for (String string : strings) {
+            try (LanguageServiceClient language = LanguageServiceClient.create()) {
+                //requestRateLimiter.acquire();
+                Document doc = Document.newBuilder().setContent(string).setType(Type.PLAIN_TEXT).build();
+                List<Entity> entities = language.analyzeEntities(doc).getEntitiesList();
+                for (Entity entity : entities) {
+                    if (entity.getType() == Entity.Type.ORGANIZATION) {
+                        list.add(entity.getName());
+                    }
+                }
+                //requestRateLimiter.release();
+            } catch (Exception e) {
+                logger.severe("FreaksWhoIsRecord call fucked up! " + e.getMessage());
+            }
+        }
+
+        logger.info(mm + " Possible Names from GCP NLP: " + list.size());
+        for (String s : list) {
+            logger.info(mm + " name: " + s);
+        }
+        return list;
+    }
+
+}

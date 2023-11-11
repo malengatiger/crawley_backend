@@ -1,5 +1,7 @@
 package com.boha.crawley.data;
 
+import com.boha.crawley.data.freaks.FreaksWhoIsRecord;
+import com.boha.crawley.services.FreaksWhoIsService;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
@@ -14,7 +16,12 @@ public class DomainData implements  Comparable<DomainData>{
     private String state;
     private String articleTitle;
     private List<String> links;
+    private List<String> names;
     private String date;
+    private String email;
+    private int numberOfChatGPTRequests;
+    private int numberOfGoogleNLPRequests;
+
 
 
 

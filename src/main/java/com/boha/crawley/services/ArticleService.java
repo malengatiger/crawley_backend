@@ -1,8 +1,8 @@
 package com.boha.crawley.services;
 
 
-import com.boha.crawley.data.*;
-import com.boha.crawley.data.whois.WhoIsRecord;
+import com.boha.crawley.data.Article;
+import com.boha.crawley.data.ExtractionBag;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -10,48 +10,61 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import edu.stanford.nlp.ling.CoreAnnotations;
-import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.pipeline.Annotation;
-import edu.stanford.nlp.pipeline.StanfordCoreNLP;
-import edu.stanford.nlp.util.CoreMap;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.jetbrains.annotations.NotNull;
-import org.joda.time.DateTime;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import javax.mail.MessagingException;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 @Service
 public class ArticleService {
-    public void init() {
-        Properties props = new Properties();
-        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,ner");
-            pipeline = new StanfordCoreNLP(props);
-        logger.info(mm + " Stanford NLP pipeline set up!");
-    }
+//    public void init() {
+//        Properties props = new Properties();
+//        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,ner");
+//        pipeline = new StanfordCoreNLP(props);
+//        logger.info(mm + " Stanford NLP pipeline set up!");
+//        // Set up pipeline properties
+//        synchronized (lock) {
+//            if (pipeline == null) {
+//                pipeline = new StanfordCoreNLP(props);
+//            }
+//        }
+//    }
+
     @Autowired
     DomainOwnerInfoService domainOwnerInfoService;
     @Autowired
     FirebaseService firebaseService;
 
-    @Autowired
-    WhoIsService whoIsService;
+//    @Autowired
+//    WhoIsService whoIsService;
 
     @Autowired
     CSVWarrior csvWarrior;
+
+    @Autowired
+    FreaksWhoIsService freaksWhoIsService;
+
+    @Autowired
+    EmailService emailService;
+
+    @Autowired
+    ChatGPTService chatGPTService;
 
 
     static final Logger logger = Logger.getLogger(ArticleService.class.getSimpleName());
@@ -62,80 +75,6 @@ public class ArticleService {
     @Value("${fileName}")
     private String fileName;
 
-    public ArticleService() {
-        logger.info(mm + " ArticleService Construction ");
-        try {
-            init();
-        } catch (Exception e) {
-            logger.info(mm + " ERROR setting up in Stanford! " +
-                    "\uD83C\uDF4E\uD83C\uDF4E\uD83C\uDF4E\uD83C\uDF4E \n " + e.getMessage());
-        }
-    }
-
-    @Value("${articles}")
-    private String articlesUrl;
-    @Value("${articlesPath}")
-    private String articlesPath;
-
-    public File writeDomainDataCsvFile(List<DomainData> domainDataList) {
-
-        String filePath = "domain_" + System.currentTimeMillis() + ".csv";
-        File csvFile = new File(filePath);
-        try (FileWriter writer = new FileWriter(csvFile)) {
-            // Write the header column
-            writer.append("Domain,Company,State,Country,Article Title,URL,Date");
-            writer.append("\n");
-
-            // Write the data rows
-            for (DomainData domainData : domainDataList) {
-                writer.append(domainData.getDomain());
-                writer.append(",");
-                writer.append(domainData.getDomainOwner());
-                writer.append(",");
-                writer.append(domainData.getState());
-                writer.append(",");
-                writer.append(domainData.getCountry());
-                writer.append(",");
-                writer.append(domainData.getArticleTitle());
-                writer.append(",");
-                writer.append(domainData.getUrl());
-                writer.append(",");
-                writer.append(domainData.getDate());
-                writer.append("\n");
-            }
-
-            writer.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return csvFile;
-    }
-
-    public File writeSearchTextCsvFile(PossibleCompanyNames possibleCompanyNames) {
-
-        String filePath = "domain_" + System.currentTimeMillis() + ".csv";
-        File csvFile = new File(filePath);
-        try (FileWriter writer = new FileWriter(csvFile)) {
-            // Write the header column
-            writer.append("Domain,Article Title,URL");
-            writer.append("\n");
-
-            // Write the data rows
-            for (String text : possibleCompanyNames.getCompanyNames()) {
-                writer.append(DateTime.now().toDateTimeISO().toString());
-                writer.append(",");
-                writer.append(text);
-                writer.append("\n");
-            }
-
-            writer.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return csvFile;
-    }
 
     /**
      * Downloads the articles csv file and creates the extracted data
@@ -143,18 +82,24 @@ public class ArticleService {
      * @return List<DomainData>
      */
 
-    public File parseUploadedFile(File articleFile) throws Exception {
-        return parseArticles(articleFile);
-    }
 
-    public File parseArticles(File articleFile) throws Exception {
+    @Async
+    public CompletableFuture<Void> parseArticlesAsync(File articleFile, String email) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                parseArticles(articleFile, email);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("parseArticles failed: " + e.getMessage());
+            }
+        });
+    }
+    @Async
+    public void parseArticles(File articleFile, String email) throws Exception {
         logger.info(mm + " parse Articles starting ..........");
         long startTime = System.currentTimeMillis();
-        List<DomainData> dataList = new ArrayList<>();
-        List<String> names;
-        HashMap<String, String> nameMap = new HashMap<>();
+        List<ExtractionBag> extractionBags;
 
-        //
         setExclusionsMap();
         if (articleFile == null) {
             articleFile = firebaseService.downloadFile();
@@ -169,111 +114,96 @@ public class ArticleService {
 
         try {
             var articles = getArticlesFromFile(articleFile);
-            for (Article article : articles) {
-                if (filterLink(article.link())) {
-                    var bag = extractDataFromPage(article.link());
-                    if (bag != null) {
-                        DomainData dd = getDomainData(article, bag);
-                        dataList.add(dd);
-                        for (String name : bag.getNames()) {
-                            nameMap.put(name, name);
-                        }
-                    }
+            extractionBags = getExtractedData(articles, email);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+
+        List<String> m = new ArrayList<>();
+        if (!extractionBags.isEmpty()) {
+            int counter = 0;
+            for (ExtractionBag extractionBag : extractionBags) {
+                m.add(extractionBag.getText());
+                counter++;
+                if (counter % 10 == 0) {
+                    var cNames = chatGPTService.findCompanies(m);
+                    //firebaseService.addExtractionData(cNames);
+                    logger.info(mm+" number of names: "+cNames.size());
+                    logger.info(mm+" names: "+cNames);
+                    m.clear();
                 }
             }
+            // Process the remaining items in the list
+            if (!m.isEmpty()) {
+                var cNames = chatGPTService.findCompanies(m);
+                //firebaseService.addExtractionData(cNames);
+                logger.info(mm+" number of names: "+cNames.size());
+                logger.info(mm+" names: "+cNames);
+                m.clear();
+            }
+            logger.info(mm + " extracted data added: " + extractionBags.size()
+                    + " \uD83D\uDD35\uD83D\uDD35date: ");
+        }
+        printElapsed(startTime, extractionBags);
+        //upload to firebase cloud storage
 
-        } catch (IOException e) {
-            e.printStackTrace();
+    }
+
+    private void sendEmail(int status, int count, String recipient, String documentUrl) throws MessagingException {
+        String htmlContent;
+        String subject;
+        if (status == 0) {
+            subject = "Results of your request";
+            // Create the HTML content
+            htmlContent = "<html><body><h4> StealthCannabisApp Response" + subject + "</h4>" +
+                    "<p> The app has processed your request and "+count+" records were found. A file of the response has been created for you. Click to start the download.</p>"
+                    + "<p><a href=\"" + documentUrl + "\">Download File</a></p></body></html>";
+
+        } else {
+            subject = "Error in your request";
+            htmlContent = "<html><body><h4> StealthCannabisApp Error Response" + subject + "</h4>" +
+                    "<p> The app tried to process your request and ran into an error. Please retry your request.</p>";
         }
 
-        names = nameMap.values().stream().toList();
-        List<String> fNames = new ArrayList<>();
-        for (String name : names) {
-            fNames.add(name);
-        }
-        //
-        Collections.sort(fNames);
-        var st = firebaseService.addCompanyNames(fNames);
-        logger.info(mm + " search text data added: " + st.getCompanyNames().size()
-                + " \uD83D\uDD35\uD83D\uDD35date: " + st.getDate());
-        //
-        Collections.sort(dataList);
-        var bag = new DomainDataBag(dataList,
-                new DateTime().toDateTimeISO().toString(),
-                UUID.randomUUID().toString());
-        //
-        firebaseService.addDomainData(bag);
-        logger.info(mm + " domain data added: " + dataList.size()
-                + " \uD83D\uDD35\uD83D\uDD35date: ");
+        emailService.sendEmail(recipient, subject, htmlContent);
 
-        var domainCSV = csvWarrior.writeDomainCSV(dataList);
-        String url1 = firebaseService.uploadFile(domainCSV);
-        logger.info(mm + " domain csv storage URL: " + url1);
-        var file2 = csvWarrior.writeCompaniesCSV(fNames);
-        String url2 = firebaseService.uploadFile(file2);
-        logger.info(mm + " companies csv storage URL: " + url2);
+    }
 
-        // Calculate the elapsed time in seconds
+    private static void printElapsed(long startTime, List<ExtractionBag> dataList) {
+        //
         long endTime = System.currentTimeMillis();
         long elapsedTimeMillis = endTime - startTime;
         double elapsedTimeMinutes = elapsedTimeMillis / 1000.0 / 60;
+        double elapsedTimeSeconds = elapsedTimeMillis / 1000.0;
         DecimalFormat decimalFormat = new DecimalFormat("#.##");
         String minutes = decimalFormat.format(elapsedTimeMinutes);
-        logger.info("\uD83C\uDF4A\uD83C\uDF4A\uD83C\uDF4A Extraction complete: "
-                + minutes + " elapsed minutes; \uD83E\uDD4F domainAndURLS: " + dataList.size());
-        return domainCSV;
+        String seconds = decimalFormat.format(elapsedTimeSeconds);
+
+        logger.info("\n\n\uD83C\uDF4A\uD83C\uDF4A\uD83C\uDF4A Extraction complete: "
+                + minutes + " elapsed minutes;  " + seconds + " totals seconds " +
+                "\uD83E\uDD4F number of records created: "
+                + dataList.size() + " \uD83D\uDD35\uD83D\uDD35");
     }
 
     @NotNull
-    private DomainData getDomainData(Article article, ExtractionBag bag) throws IOException {
-        String domain = getDomain(article.link());
-        WhoIsRecord wir = whoIsService.getDomainDetails(domain);
-        String owner = null;
-        String state = null;
-        String country = null;
-        if (wir != null) {
-            if (wir.getRegistrant() != null) {
-                owner = wir.getRegistrant().getOrganization();
-                state = wir.getRegistrant().getState();
-                country = wir.getRegistrant().getCountry();
+    private List<ExtractionBag> getExtractedData(List<Article> articles, String email) {
+
+        List<ExtractionBag> extractionBags = new ArrayList<>();
+
+        for (Article article : articles) {
+            if (filterLink(article.link())) {
+                var bag = extractDataFromPage(article);
+                if (bag != null) {
+                    extractionBags.add(bag);
+                }
             }
         }
-        var dd = new DomainData();
-        dd.setDomain(getDomain(article.link()));
-        dd.setArticleTitle(article.title());
-        dd.setLinks(bag.getLinks());
-        dd.setDate(DateTime.now().toDateTimeISO().toString());
-        dd.setDomainOwner(owner);
-        dd.setState(state);
-        dd.setCountry(country);
-        dd.setUrl(article.link());
-
-        return dd;
+        //freaksWhoIsService.getDomainDetails(extractionBags);
+        return extractionBags;
     }
 
-    StanfordCoreNLP pipeline;
-
-    public List<String> extractCompanyNames(String text) {
-        logger.info(mm + " extract names from text " + text.length() + " bytes");
-        Annotation document = new Annotation(text);
-        pipeline.annotate(document);
-        List<String> companyNames = new ArrayList<>();
-
-        List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
-        for (CoreMap sentence : sentences) {
-            getNames(companyNames, sentence);
-        }
-        logger.info(mm + " names extracted: " + companyNames.size() + " \uD83D\uDD35\uD83D\uDD35");
-        List<String> filtered = new ArrayList<>();
-        for (String n : companyNames) {
-            if (!n.isEmpty() && (shouldKeepName(n))) {
-                filtered.add(n.trim());
-                logger.info(mm + " name extracted: \uD83D\uDD34\uD83D\uDD34 " + n);
-
-            }
-        }
-        return filtered;
-    }
 
     HashMap<String, String> exclusionsMap = new HashMap<>();
     List<String> exclusionList = new ArrayList<>();
@@ -289,31 +219,31 @@ public class ArticleService {
         return ok;
     }
 
-    private void getNames(List<String> companyNames, CoreMap sentence) {
-        StringBuilder currentEntity = null;
-        for (CoreLabel token : sentence.get(CoreAnnotations.TokensAnnotation.class)) {
-            String word = token.word();
-            String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
-
-            if (nerTag.equals("ORGANIZATION")) {
-                if (currentEntity == null) {
-                    currentEntity = new StringBuilder(word);
-                } else {
-                    currentEntity.append(" ").append(word);
-                }
-            } else {
-                if (currentEntity != null) {
-                    companyNames.add(currentEntity.toString());
-                    currentEntity = null;
-                }
-            }
-        }
-
-        if (currentEntity != null && (shouldKeepName(currentEntity.toString()))) {
-            companyNames.add(currentEntity.toString());
-
-        }
-    }
+//    private void getNames(List<String> companyNames, CoreMap sentence) {
+//        StringBuilder currentEntity = null;
+//        for (CoreLabel token : sentence.get(CoreAnnotations.TokensAnnotation.class)) {
+//            String word = token.word();
+//            String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
+//
+//            if (nerTag.equals("ORGANIZATION")) {
+//                if (currentEntity == null) {
+//                    currentEntity = new StringBuilder(word);
+//                } else {
+//                    currentEntity.append(" ").append(word);
+//                }
+//            } else {
+//                if (currentEntity != null) {
+//                    companyNames.add(currentEntity.toString());
+//                    currentEntity = null;
+//                }
+//            }
+//        }
+//
+//        if (currentEntity != null && (shouldKeepName(currentEntity.toString()))) {
+//            companyNames.add(currentEntity.toString());
+//
+//        }
+//    }
 
     private List<Article> getArticlesFromFile(File csv) throws Exception {
         List<Article> list;
@@ -366,17 +296,15 @@ public class ArticleService {
         return dom;
     }
 
-    private ExtractionBag extractDataFromPage(String url) {
+    private ExtractionBag extractDataFromPage(Article article) {
         long startTime = System.currentTimeMillis();
         ExtractionBag eb = null;
         try {
-            Document document = Jsoup.connect(url).get();
+            Document document = Jsoup.connect(article.link()).get();
             var links = extractLinksFromDocument(document);
             var text = extractTextFromDocument(document);
-            List<String> names =  extractCompanyNames(text);
-
-            eb = new ExtractionBag(text, links, names);
-            printElapsed(startTime, url);
+            eb = new ExtractionBag(text, links, new ArrayList<>(), new ArrayList<>(), article);
+            printElapsed(startTime, article);
         } catch (Exception e) {
             logger.severe(e.getMessage());
         }
@@ -384,7 +312,7 @@ public class ArticleService {
         return eb;
     }
 
-    private static void printElapsed(long startTime, String url) {
+    private static void printElapsed(long startTime, Article article) {
         long endTime = System.currentTimeMillis();
         // Calculate the elapsed time in seconds
         long elapsedTimeMillis = endTime - startTime;
@@ -396,7 +324,7 @@ public class ArticleService {
 
         logger.info(mm + " Data extracted for page: \uD83D\uDD35\uD83D\uDD35" +
                 " elapsed time in seconds: "
-                + seconds + " \uD83D\uDD35\uD83D\uDD35 url: " + url);
+                + seconds + " \uD83D\uDD35\uD83D\uDD35 article: " + article.title());
     }
 
     private boolean filterLink(String link) {

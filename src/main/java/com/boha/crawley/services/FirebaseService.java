@@ -1,8 +1,9 @@
 package com.boha.crawley.services;
 
 import com.boha.crawley.data.DomainData;
-import com.boha.crawley.data.DomainDataBag;
+import com.boha.crawley.data.ExtractionBag;
 import com.boha.crawley.data.PossibleCompanyNames;
+import com.boha.crawley.data.chatgpt.ChatGPTResponse;
 import com.google.api.core.ApiFuture;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.CollectionReference;
@@ -14,7 +15,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.joda.time.DateTime;
+//import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,12 +23,16 @@ import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+//https://stealthapp-2yr65f7kaa-uw.a.run.app
 @Service
 @RequiredArgsConstructor
 public class FirebaseService {
@@ -63,29 +68,28 @@ public class FirebaseService {
         logger.info(mm + " @PostConstruct: FirebaseApp.initialized! \uD83D\uDD35\uD83D\uDD35");
 
     }
-    static final String domainData = "companyData";
+    static final String extractionData = "extractionData";
     static final String searchData = "possibleCompanies";
 
-    public void addDomainData(DomainDataBag domainDataBag) throws ExecutionException, InterruptedException {
+    public void addExtractionData(ExtractionBag extractionBag) throws ExecutionException, InterruptedException {
         logger.info(mm + " adding stealth data to Firestore ...");
-        CollectionReference collectionRef = firestore.collection(domainData);
-
-        int cnt = 0;
-        for (DomainData data : domainDataBag.getDomainDataList()) {
-            var res = collectionRef.add(data);
-            cnt++;
-            logger.info(mm + " domain data added #" + cnt
-                    + " record to Firestore: \uD83C\uDF0D "
-                    + data.getDomain() + " - " + res.get().getPath());
-
-        }
+        CollectionReference collectionRef = firestore.collection(extractionData);
+        var res = collectionRef.add(extractionBag);
+        logger.info(mm + " extraction bag added: " + res.get().getPath());
+    }
+    public void addChatGPTResponse(ChatGPTResponse chatGPTResponse) throws ExecutionException, InterruptedException {
+        logger.info(mm + " adding stealth data to Firestore ...");
+        CollectionReference collectionRef = firestore.collection("chatGPTResponses");
+        var res = collectionRef.add(chatGPTResponse);
+        logger.info(mm + " chatGPTResponse added: " + res.get().getPath());
     }
     public PossibleCompanyNames addCompanyNames(List<String> texts) throws ExecutionException, InterruptedException {
         logger.info(mm + " adding search data to Firestore ...");
         CollectionReference collectionRef = firestore.collection(searchData);
+        DateFormat df = new SimpleDateFormat("MMM dd yyyy HH:mm");
 
         PossibleCompanyNames st = new PossibleCompanyNames();
-        st.setDate(new DateTime().toDateTimeISO().toString());
+        st.setDate(df.format(new Date()));
         st.setSearchId(UUID.randomUUID().toString());
         st.setCompanyNames(texts);
 
@@ -96,7 +100,7 @@ public class FirebaseService {
 
     public List<DomainData> getDomainDataList() throws ExecutionException, InterruptedException {
 
-        CollectionReference collectionRef = firestore.collection(domainData);
+        CollectionReference collectionRef = firestore.collection(extractionData);
         Query query = collectionRef.orderBy("domain");
 
         ApiFuture<QuerySnapshot> querySnapshot = query.get();
@@ -142,7 +146,7 @@ public class FirebaseService {
 
        return signedUrl;
     }
-    public String getSignedUrl(String objectName, String contentType  ) {
+    private String getSignedUrl(String objectName, String contentType  ) {
         logger.info(mm + " getSignedUrl for cloud storage ...");
 
         BlobId blobId = BlobId.of(bucketName, directory

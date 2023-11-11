@@ -1,0 +1,55 @@
+html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Articles</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+  <h1 class="mt-5">Upload Articles</h1>
+  <form id="uploadForm" th:action="@{/uploadArticles}" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+      <label for="emailAddress">Email Address</label>
+      <input type="email" class="form-control" id="emailAddress" name="emailAddress" required>
+    </div>
+    <div class="form-group">
+      <label for="file">File</label>
+      <input type="file" class="form-control-file" id="file" name="file" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+</div>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+        $(document).ready(function() {
+            $('#uploadForm').submit(function(e) {
+                e.preventDefault(); // Prevent form submission
+
+                var formData = new FormData(this);
+
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        // Handle success response
+                        if (response === 'uploadArticlesSuccess') {
+                            // Redirect to success page or display success message
+                            window.location.href = '/uploadArticlesSuccess';
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // Handle error response
+                        console.error(error);
+                    }
+                });
+            });
+        });
+    </script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,9 +1,6 @@
 
 4
 mvnw,5/d/5d837c4ed85ecaaf932c506e80ff5d7b9f3d590d
-:
-
-.gitignore,a/5/a5cc2925ca8258af241be7e5b0381edf30266302
 `
 0src/main/java/com/boha/crawley/data/Article.java,0/4/046e2d2be24cef8e31987cca474bc3640a39489f
 d
@@ -23,8 +20,6 @@ Csrc/main/java/com/boha/crawley/services/DomainOwnerInfoService.java,1/0/1066c6
 :
 
 envcfg.txt,c/f/cff31ad3d3bf8103020702eb903c75079d341abc
-f
-6src/main/java/com/boha/crawley/data/ExtractionBag.java,8/e/8eb4144fd6d5041f6eff1330284db2b25505d100
 =
 machinet.conf,c/0/c0c344344b585d80f52a1526d790d0bf0da5650b
 U
@@ -47,9 +42,19 @@ o
 ?src/main/java/com/boha/crawley/data/whois/TechnicalContact.java,7/4/74ccdd01a760061a275295fced067f81a4f1ce7a
 ^
 .src/main/java/com/boha/crawley/data/Usage.java,b/1/b154a4435a458f577e565ec23fb94198edf01a84
-k
-;src/test/java/com/boha/crawley/CrawleyApplicationTests.java,8/2/8282b8cd1b65d9172b19153ec0e5a15440c5b52e
 7
 HELP.md,1/a/1a273f73b7a477b0745593641bd708a6182c7ad5
+t
+Dsrc/main/java/com/boha/crawley/data/whois/AdministrativeContact.java,8/2/82e7c4a825ea55d56e056848fd154995c0e915f4
+A
+articles2-dev.csv,6/b/6b4d9a19c8b75ee04c878318f9b9b959076601b7
+@
+articles-dev.csv,d/4/d46145f5d04e9b98dfbcd03c72755507c8a85b4e
+A
+articles-test.csv,8/6/86cb6a272d4ff25779f0519a46cab26bd1e140a7
+m
+=src/main/java/com/boha/crawley/data/PossibleCompanyNames.java,c/9/c9360d967fded537aef70715e6ab94ad5c298b0e
+j
+:src/main/java/com/boha/crawley/data/whois/WhoIsRecord.java,5/0/5070d30d04ea6f5a1b81c9f6c9e34370f1d7714b
 e
 5src/main/java/com/boha/crawley/data/ChatResponse.java,f/8/f84c0506e757a9bf094504105442b8a135168aa3

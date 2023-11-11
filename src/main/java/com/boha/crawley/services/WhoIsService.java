@@ -35,7 +35,8 @@ public class WhoIsService {
                 .retryOnConnectionFailure(true)
                 .build();
     }
-    static final String url = "https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=";
+     static final String url = "https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=";
+
     public WhoIsRecord getDomainDetails(String domain) throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append(url);
