@@ -4,6 +4,7 @@ import com.boha.crawley.data.serp.OrganicResult;
 import com.boha.crawley.data.serp.SERPResponse;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import lombok.RequiredArgsConstructor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -17,6 +18,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -28,11 +30,13 @@ import java.util.logging.Logger;
 
 public class SERPService {
     static final Logger logger = Logger.getLogger(SERPService.class.getSimpleName());
-    static final String mm = "\uD83C\uDF6F SERPService: \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F";
+    static final String mm = "\uD83E\uDD6C\uD83E\uDD6C SERPService: " +
+            "\uD83E\uDD6C\uD83E\uDD6C\uD83E\uDD6C\uD83E\uDD6C";
     static final Gson G = new GsonBuilder().setPrettyPrinting().create();
     static final String url = "https://api.scaleserp.com/search?";
     @Value("${serpApiKey}")
     private String serpApiKey;
+
     private final OkHttpClient client;
     static final MediaType mediaType = MediaType.parse("application/json");
 
@@ -46,36 +50,28 @@ public class SERPService {
     }
 
 //    public static void main(String[] args) {
-//        tryWeb("IBM official website, address");
+//        SERPService service = new SERPService();
+//        var list = service.getPossibleAddresses("IBM address");
+//
 //    }
 
-
-    public List<String> getAddresses(String query) {
+    private static final String SERP_URL = "https://api.scaleserp.com/search?api_key=";
+    public String getPossibleAddresses(String query) {
+        logger.info(mm+" ............ Getting possible addresses from SERP ....");
         List<String> foundAddresses = new ArrayList<>();
         try {
-            // Set up the request parameters
-            // Encode the query parameter
-            String encodedQuery = URLEncoder.encode(query, "UTF-8");
+            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
 
             // Build the request URL
-            String requestUrl = "https://api.scaleserp.com/search?api_key="
-                    + "2CFC9CDECBE3423D8D94E36450D3ED04"
-//                    + "&output=JSON"
-//                    + "&location=United+States"
+            String requestUrl = SERP_URL
+                    + serpApiKey
                     + "&q=" + encodedQuery;
 
-            // Create a URL object from the request URL
-            URL url = new URL(requestUrl);
-
-            // Open a connection to the URL
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-            // Set the request method to GET
+            URL mUrl = new URL(requestUrl);
+            HttpURLConnection connection = (HttpURLConnection) mUrl.openConnection();
             connection.setRequestMethod("GET");
-
-            // Get the response code
             int responseCode = connection.getResponseCode();
-            logger.info(mm + " response code: " + responseCode);
+            logger.info(mm + " getPossibleAddresses : response code: " + responseCode);
             // Read the response from the input stream
             BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             StringBuilder response = new StringBuilder();
@@ -85,49 +81,32 @@ public class SERPService {
             }
             reader.close();
 
-            SERPResponse sr = G.fromJson(response.toString(), SERPResponse.class);
-            // Print the JSON response from Scale SERP
-           logger.info(mm+G.toJson(sr));
-            foundAddresses = askChatGPT(sr.getOrganicResults());
-            for (OrganicResult result : sr.getOrganicResults()) {
-                logger.info(mm+" snippet: " + result.getSnippet());
+            try {
+                SERPResponse sr = G.fromJson(response.toString(), SERPResponse.class);
+                logger.info(mm + " SERP has responded! " + sr.getOrganicResults().size() +
+                        " organic results obtained \uD83D\uDD35 ");
+                for (OrganicResult result : sr.getOrganicResults()) {
+                    foundAddresses.add(result.getSnippet());
+                }
+            } catch (JsonSyntaxException e) {
+                logger.severe(mm+"JsonSyntaxException from SERP call: " +
+                        "\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34 " + e.getMessage());
+                logger.severe(mm+" bad response? \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34" +
+                        " : \n" + response.substring(0,1024));
+                return null;
             }
-            // Close the connection
             connection.disconnect();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return foundAddresses;
-    }
-//    public static String getAddress(String randomString) {
-//
-//        // Regular expression pattern to match a street address
-////        String regex = "\\d+\\s+\\w+\\s+\\w+";
-//        String regex = "\\b\\d+\\s+.*?(?=,|$)";
-//
-//        // Create a Pattern object
-//        Pattern pattern = Pattern.compile(regex);
-//
-//        // Create a Matcher object
-//        Matcher matcher = pattern.matcher(randomString);
-//
-//        // Find the first occurrence of a street address
-//        if (matcher.find()) {
-//            return matcher.group();
-//        } else {
-//            logger.info(mm+" No street address found.");
-//            return "";
-//        }
-//    }
-    public  List<String> askChatGPT(List<OrganicResult> organicResults) {
-        List<String> list = new ArrayList<>();
-        for (OrganicResult result : organicResults) {
-            String address = chatGPTService.findAddressOrPhone(result.getSnippet(), 0);
-            logger.info(mm+" address? " + address);
-            list.add(address);
+        StringBuilder sb = new StringBuilder();
+        for (String address : foundAddresses) {
+            sb.append(address).append(" ");
         }
-        return list;
+        logger.info(mm + " SERP has responded! " + foundAddresses.size() +
+                " addresses found \uD83D\uDD35 ");
+        return sb.toString();
     }
-    @Autowired
-    private ChatGPTService chatGPTService;
+
+
 }

@@ -10,9 +10,9 @@ public class CompanyWebsiteSearch {
     static final Logger logger = Logger.getLogger(CompanyWebsiteSearch.class.getSimpleName());
     static final String mm = " \uD83C\uDF00 CompanyWebsiteSearch:  \uD83C\uDF00 \uD83C\uDF00 \uD83C\uDF00 \uD83C\uDF00";
 
-    public static void main(String[] args) {
-        findWebsites("IBM");
-    }
+//    public static void main(String[] args) {
+//        findWebsites("IBM");
+//    }
     public static void findWebsites(String companyName) {
         try {
             // Build the search query

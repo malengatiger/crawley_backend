@@ -1,9 +1,14 @@
 package com.boha.crawley.controllers;
 
 import com.boha.crawley.services.ArticleService;
+import com.boha.crawley.services.CSVWarrior;
 import com.boha.crawley.services.ChatGPTService;
 import com.boha.crawley.services.WhoIsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.ui.Model;
@@ -24,10 +29,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 @RestController
+@RequiredArgsConstructor
 public class MainController {
     static final Logger logger = Logger.getLogger(MainController.class.getSimpleName());
     static final String mm = " \uD83E\uDD6C \uD83E\uDD6C \uD83E\uDD6C MainController: ";
-
+    private final CSVWarrior csvWarrior;
     @Autowired
     ArticleService articleService;
     @Autowired
@@ -73,10 +79,12 @@ public class MainController {
 //
 //    })
     DateFormat df = new SimpleDateFormat("MMMM dd yyyy HH:mm:ss");
+
     @GetMapping("/testThyme")
     public String testThyme(Model model) {
         return "index.html";
     }
+
     @GetMapping("getDomainInfo")
     public ResponseEntity<Object> getDomainInfo(@RequestParam String domain) {
         try {
@@ -89,6 +97,30 @@ public class MainController {
                             df.format(new Date())));
         }
     }
+
+    @GetMapping("getSpreadsheet")
+    public ResponseEntity<Object> getSpreadsheet(@RequestParam String requestId) {
+        try {
+            File csvFile = csvWarrior.createSpreadsheet(requestId);
+            // Set the response headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", csvFile.getName());
+
+            // Create a FileSystemResource from the file
+            FileSystemResource resource = new FileSystemResource(csvFile);
+            // Return the file as a ResponseEntity
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new CustomResponse(400,
+                            "getSpreadsheet failed: " + e.getMessage(),
+                            df.format(new Date())));
+        }
+    }
+
     @GetMapping("getLastResponse")
     public ResponseEntity<Object> getLastResponse(@RequestParam String email) {
         try {
@@ -127,7 +159,7 @@ public class MainController {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 articleService.parseArticlesAsync(file, email);
-                return "Upload articles completed successfully";
+                return "\uD83D\uDD35 Your articles may take a while to process. An email with a download link will be sent to " + email + " when the processing is completed";
             } catch (Exception e) {
                 logger.severe("parseArticles failed: " + e.getMessage());
                 throw new RuntimeException("Upload articles failed: " + e.getMessage());

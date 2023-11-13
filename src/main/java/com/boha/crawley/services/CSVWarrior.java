@@ -1,8 +1,12 @@
 package com.boha.crawley.services;
 
-import com.boha.crawley.data.DomainData;
 import com.boha.crawley.data.ExtractionBag;
+import com.boha.crawley.data.chatgpt.Address;
+import com.boha.crawley.data.chatgpt.Email;
+import com.boha.crawley.data.chatgpt.Phone;
+import com.boha.crawley.data.chatgpt.ProcessedChatGPTResponse;
 import com.opencsv.CSVWriter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -19,132 +23,119 @@ import java.util.List;
 import java.util.logging.Logger;
 
 @Service
+@RequiredArgsConstructor
 public class CSVWarrior {
     static final Logger logger = Logger.getLogger(CSVWarrior.class.getSimpleName());
     static final String mm = "CSVWarrior: \uD83E\uDD8A\uD83E\uDD8A\uD83E\uDD8A";
 
-    public void writeExtractionBags(List<ExtractionBag> data) throws Exception {
-
-        logger.info(mm + " create Domain csv file from WhoIsXML: " + data.size() + " rows");
-        List<String[]> lines = new ArrayList<>();
-        String[] strings = new String[7];
-        strings[0] = "Domain";
-        strings[1] = "Company";
-        strings[2] = "Article Title";
-        strings[3] = "State";
-        strings[4] = "Country";
-        strings[5] = "Article Link";
-        strings[6] = "Date";
-        lines.add(strings);
-
-//        for (ExtractionBag d : data) {
-//            String[] stuff = new String[7];
-//            stuff[0] = d.;
-//            stuff[1] = d.getDomainOwner();
-//            stuff[2] = d.getArticleTitle();
-//            stuff[3] = d.getState();
-//            stuff[4] = d.getCountry();
-//            stuff[5] = d.getUrl();
-//            stuff[6] = df.format(new Date());
-//            lines.add(stuff);
-//        }
-//        Path path = Paths.get("domain" +
-//                System.currentTimeMillis() + ".csv");
-//        try (CSVWriter writer = new CSVWriter(new FileWriter(path.toString()))) {
-//            writer.writeAll(lines);
-//        }
-
-//        File f = path.toFile();
-//        logger.info(mm + " DomainData csv file, length: " + f.length());
-//        print(f);
-
-    }
-
+    private final FirebaseService firebaseService;
     DateFormat df = new SimpleDateFormat("MMMM dd yyyy HH:mm");
 
-    public void writeDomainCSVFromFreaks(List<DomainData> data) throws Exception {
-        logger.info(mm + " create Domain csv file from FreaksWhoIs: " + data.size() + " rows");
+    public File createSpreadsheet(String requestId) throws Exception {
+        logger.info(mm + "createSpreadsheet: ... create csv file, requestId: " + requestId );
         List<String[]> lines = new ArrayList<>();
-        String[] strings = new String[12];
-        strings[0] = "Domain";
-        strings[1] = "Company";
-        strings[2] = "Phone";
-        strings[3] = "Street";
-        strings[4] = "City";
-        strings[5] = "State";
-        strings[6] = "ZipCode";
-        strings[7] = "Country";
-        strings[8] = "Code";
-        strings[9] = "Email Address";
-        strings[10] = "Phone";
-        strings[11] = "Article Title";
-
+        List<ProcessedChatGPTResponse> data = firebaseService.getData(requestId);
+        logger.info(mm + "createSpreadsheet: ... records found: " + data.size() );
+        String[] strings = new String[7];
+        strings[0] = "Companies";
+        strings[1] = "Phone";
+        strings[2] = "Email Address";
+        strings[3] = "Address";
+        strings[4] = "Article Title";
+        strings[5] = "Article Link";
+        strings[6] = "Date Created";
         lines.add(strings);
 
-        for (DomainData d : data) {
-//            if (d.getFreaksWhoIsRecord().getRegistrantContact() != null) {
-//                String[] stuff = new String[12];
-//                stuff[0] = d.getFreaksWhoIsRecord().getRegistrantContact().getName();
-//                stuff[1] = d.getFreaksWhoIsRecord().getRegistrantContact().getCompany();
-//                stuff[2] = d.getFreaksWhoIsRecord().getRegistrantContact().getPhone();
-//                stuff[3] = d.getFreaksWhoIsRecord().getRegistrantContact().getStreet();
-//                stuff[4] = d.getFreaksWhoIsRecord().getRegistrantContact().getCity();
-//                stuff[5] = d.getFreaksWhoIsRecord().getRegistrantContact().getState();
-//                stuff[6] = d.getFreaksWhoIsRecord().getRegistrantContact().getZipCode();
-//                stuff[7] = d.getFreaksWhoIsRecord().getRegistrantContact().getCountryName();
-//                stuff[8] = d.getFreaksWhoIsRecord().getRegistrantContact().getCountryCode();
-//                stuff[9] = d.getFreaksWhoIsRecord().getRegistrantContact().getEmailAddress();
-//                stuff[10] = d.getFreaksWhoIsRecord().getRegistrantContact().getPhone();
-//                stuff[11] = d.getArticleTitle();
-//                lines.add(stuff);
-//            }
-        }
-//        Path path = Paths.get("domain" +
-//                System.currentTimeMillis() + ".csv");
-//        try (CSVWriter writer = new CSVWriter(new FileWriter(path.toString()))) {
-//            writer.writeAll(lines);
-//        }
-//
-//        File f = path.toFile();
-//        logger.info(mm + " DomainData csv file, length: " + f.length());
-//        print(f);
-//        return f;
+        String date = df.format(new Date());
+        for (ProcessedChatGPTResponse x : data) {
+            String[] stuff = new String[7];
+            StringBuilder cb = new StringBuilder();
+            for (String company : x.getCompanies()) {
+                cb.append(company).append("\n");
+            }
+            stuff[0] = cb.toString();
 
-    }
+            StringBuilder pb = new StringBuilder();
+            for (Phone p : x.getPhoneList()) {
+                pb.append(p.getPhone()).append(" - ");
+                pb.append(p.getCompany()).append("\n");
+            }
+            stuff[1] = pb.toString();
 
-    public File writeCompaniesCSV(List<String> data) throws Exception {
-        logger.info(mm + " create companies csv file: " + data.size() + " rows");
-        List<String[]> lines = new ArrayList<>();
-        String[] strings = new String[2];
-        strings[0] = "Date";
-        strings[1] = "Company";
-
-        lines.add(strings);
-        for (String d : data) {
-            String[] stuff = new String[2];
-            stuff[0] = df.format(new Date());
-            stuff[1] = d;
+            StringBuilder mb = new StringBuilder();
+            for (Email m : x.getEmailList()) {
+                mb.append(m.getEmail()).append(" - ");
+                mb.append(m.getCompany()).append("\n");
+            }
+            stuff[2] = mb.toString();
+            stuff[3] = flattenAddresses(x.getAddressList());
+            stuff[4] = x.getArticle().getTitle();
+            stuff[5] = x.getArticle().getLink();
+            stuff[6] = date;
             lines.add(stuff);
         }
-        Path path = Paths.get("companies" +
+
+        // Check if the directory already exists
+        File directory = new File("spreadsheets");
+        if (directory.exists()) {
+            logger.info(mm+"Directory already exists: " + directory.getAbsolutePath());
+        } else {
+            // Create the directory
+            boolean isDirectoryCreated = directory.mkdir();
+
+            if (isDirectoryCreated) {
+                logger.info(mm+"Directory created: " + directory.getAbsolutePath());
+            } else {
+                logger.info(mm+"Failed to create the directory.");
+                throw new Exception("Could not create directory"); // Exit the program if directory creation fails
+            }
+        }
+
+        Path path = Paths.get(directory.getPath(),"StealthCannabis_" +
                 System.currentTimeMillis() + ".csv");
         try (CSVWriter writer = new CSVWriter(new FileWriter(path.toString()))) {
             writer.writeAll(lines);
         }
 
         File f = path.toFile();
-        logger.info(mm + " Companies csv file, length: " + f.length());
+        logger.info(mm + " Spreadsheet csv file created, length: " + f.length());
         print(f);
         return f;
 
     }
 
+    private String flattenAddresses(List<Address> list) {
+        StringBuilder xb = new StringBuilder();
+        for (Address address : list) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(address.getCompany()).append("\n");
+            if (address.getStreet() != null) {
+                sb.append(address.getStreet()).append(", ");
+            }
+            if (address.getCity() != null) {
+                sb.append(address.getCity()).append(", ");
+            }
+            if (address.getState() != null) {
+                sb.append(address.getState()).append(", ");
+            }
+            if (address.getCountry() != null) {
+                sb.append(address.getCountry()).append(", ");
+            }
+            if (address.getZip() != null) {
+                sb.append(address.getZip());
+            }
+            xb.append(sb).append("\n\n");
+        }
+
+        return xb.toString();
+    }
+
     private void print(File file) throws IOException {
-        logger.info(mm + "Contents of DomainData csv file");
+        logger.info(mm + "Contents of Spreadsheet csv file");
         List<String> lines = Files.readAllLines(file.toPath());
         for (String line : lines) {
             logger.info(line);
         }
-        logger.info(mm + " ... end of Contents of DomainData csv file\n\n");
+        logger.info(mm + " ... end of Contents of spreadsheet csv file\n\n");
     }
 }

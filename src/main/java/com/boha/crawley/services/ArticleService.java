@@ -3,6 +3,7 @@ package com.boha.crawley.services;
 
 import com.boha.crawley.data.Article;
 import com.boha.crawley.data.ExtractionBag;
+import com.boha.crawley.data.chatgpt.ProcessedChatGPTResponse;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -27,9 +28,16 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ArticleService {
@@ -66,6 +74,9 @@ public class ArticleService {
     @Autowired
     ChatGPTService chatGPTService;
 
+    @Autowired
+    BossService bossService;
+
 
     static final Logger logger = Logger.getLogger(ArticleService.class.getSimpleName());
     static final String mm = "ArticleService: \uD83E\uDD66\uD83E\uDD66\uD83E\uDD66";
@@ -94,13 +105,13 @@ public class ArticleService {
             }
         });
     }
+
     @Async
     public void parseArticles(File articleFile, String email) throws Exception {
         logger.info(mm + " parse Articles starting ..........");
         long startTime = System.currentTimeMillis();
         List<ExtractionBag> extractionBags;
 
-        setExclusionsMap();
         if (articleFile == null) {
             articleFile = firebaseService.downloadFile();
         }
@@ -112,63 +123,93 @@ public class ArticleService {
         logger.info(mm + " articles file: " + articleFile.getAbsolutePath()
                 + " length: " + articleFile.length() + " bytes");
 
+        int totAddr = 0;
+        int totEmail = 0;
+        int totPhone = 0;
+        int numberOfSpreadsheetLines = 0;
+        String requestId = UUID.randomUUID().toString();
+        String userUrl = stealthUrl + "getSpreadsheet?requestId=" + requestId;
         try {
             var articles = getArticlesFromFile(articleFile);
             extractionBags = getExtractedData(articles, email);
 
+            for (ExtractionBag extractionBag : extractionBags) {
+                List<String> pNames = chatGPTService.getCompanyNames(extractionBag.getText());
+                ProcessedChatGPTResponse resp = bossService.digForData(pNames);
+                String id = UUID.randomUUID().toString();
+                try {
+                    if (resp != null) {
+                        resp.setRequesterEmail(email);
+                        resp.setArticle(extractionBag.getArticle());
+                        resp.setResponseId(id);
+                        resp.setRequestId(requestId);
+                        int ok = firebaseService.addProcessedChatResponse(resp);
+                        if (ok == 0) {
+                            totAddr += resp.getAddressList().size();
+                            totEmail += resp.getEmailList().size();
+                            totPhone += resp.getPhoneList().size();
+                            numberOfSpreadsheetLines++;
+                            logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle());
+                            logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
+                                    "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
+                            //todo -- create self api url that creates csv, send email ...
+                        }
+                    }
+                } catch (ExecutionException | InterruptedException e) {
+                    logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
+                            + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            logger.info(mm+" Number of Spreadsheet lines: " + numberOfSpreadsheetLines);
+            //send email
+            var addr = NumberFormat.getNumberInstance().format(totAddr);
+            var email1 = NumberFormat.getNumberInstance().format(totEmail);
+            var phone = NumberFormat.getNumberInstance().format(totPhone);
+
+            if (!extractionBags.isEmpty()) {
+                sendEmail(addr, email1, phone, 200, email, userUrl);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
+            sendEmail("","","", 400,email, userUrl);
             throw e;
         }
 
-        List<String> m = new ArrayList<>();
-        if (!extractionBags.isEmpty()) {
-            int counter = 0;
-            for (ExtractionBag extractionBag : extractionBags) {
-                m.add(extractionBag.getText());
-                counter++;
-                if (counter % 10 == 0) {
-                    var cNames = chatGPTService.findCompanies(m);
-                    //firebaseService.addExtractionData(cNames);
-                    logger.info(mm+" number of names: "+cNames.size());
-                    logger.info(mm+" names: "+cNames);
-                    m.clear();
-                }
-            }
-            // Process the remaining items in the list
-            if (!m.isEmpty()) {
-                var cNames = chatGPTService.findCompanies(m);
-                //firebaseService.addExtractionData(cNames);
-                logger.info(mm+" number of names: "+cNames.size());
-                logger.info(mm+" names: "+cNames);
-                m.clear();
-            }
-            logger.info(mm + " extracted data added: " + extractionBags.size()
-                    + " \uD83D\uDD35\uD83D\uDD35date: ");
-        }
+
+        logger.info("\n" + mm + " WORK COMPLETED! ... extracted data added: " + extractionBags.size()
+                + " articles processed \uD83D\uDD35\uD83D\uDD35 ");
+
         printElapsed(startTime, extractionBags);
-        //upload to firebase cloud storage
 
     }
 
-    private void sendEmail(int status, int count, String recipient, String documentUrl) throws MessagingException {
+    @Value("${stealthUrl}")
+    private String stealthUrl;
+
+    private void sendEmail(String totAddr, String totEmail, String totPhone, int status,
+                           String recipient, String documentUrl) throws MessagingException {
         String htmlContent;
         String subject;
-        if (status == 0) {
+        if (status == 200) {
             subject = "Results of your request";
             // Create the HTML content
-            htmlContent = "<html><body><h4> StealthCannabisApp Response" + subject + "</h4>" +
-                    "<p> The app has processed your request and "+count+" records were found. A file of the response has been created for you. Click to start the download.</p>"
-                    + "<p><a href=\"" + documentUrl + "\">Download File</a></p></body></html>";
+            htmlContent = "<html><body><h2> StealthCannabisApp </h2>" +
+                    "<h4> " + subject + "</h4>" +
+                    "<p> StealthCannabisApp has processed your request and " + totAddr + " address records, " +
+                    totEmail + " email records and " + totPhone + " telephone number records were found. " +
+                    "A file of the response has been created for you. Click to start the download.</p>"
+                    + "<p><a href=\"" + documentUrl + "\"><b>Click to download Spreadsheet</b></a></p></body></html>";
 
         } else {
             subject = "Error in your request";
-            htmlContent = "<html><body><h4> StealthCannabisApp Error Response" + subject + "</h4>" +
-                    "<p> The app tried to process your request and ran into an error. Please retry your request.</p>";
+            htmlContent = "<html><body><h4> StealthCannabisApp Error Response</h4>" +
+                    "<p> StealthCannabisApp tried to process your request and ran into an error. Please retry your request. Sorry!</p>";
         }
 
         emailService.sendEmail(recipient, subject, htmlContent);
-
+        logger.info(mm + " Email sent containing link: " + documentUrl);
     }
 
     private static void printElapsed(long startTime, List<ExtractionBag> dataList) {
@@ -193,9 +234,10 @@ public class ArticleService {
         List<ExtractionBag> extractionBags = new ArrayList<>();
 
         for (Article article : articles) {
-            if (filterLink(article.link())) {
+            if (filterLink(article.getLink())) {
                 var bag = extractDataFromPage(article);
                 if (bag != null) {
+                    bag.setArticle(article);
                     extractionBags.add(bag);
                 }
             }
@@ -207,43 +249,6 @@ public class ArticleService {
 
     HashMap<String, String> exclusionsMap = new HashMap<>();
     List<String> exclusionList = new ArrayList<>();
-
-    private boolean shouldKeepName(String name) {
-        boolean ok = true;
-        for (String s : exclusionList) {
-            if (name.contains(s)) {
-                ok = false;
-                break;
-            }
-        }
-        return ok;
-    }
-
-//    private void getNames(List<String> companyNames, CoreMap sentence) {
-//        StringBuilder currentEntity = null;
-//        for (CoreLabel token : sentence.get(CoreAnnotations.TokensAnnotation.class)) {
-//            String word = token.word();
-//            String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
-//
-//            if (nerTag.equals("ORGANIZATION")) {
-//                if (currentEntity == null) {
-//                    currentEntity = new StringBuilder(word);
-//                } else {
-//                    currentEntity.append(" ").append(word);
-//                }
-//            } else {
-//                if (currentEntity != null) {
-//                    companyNames.add(currentEntity.toString());
-//                    currentEntity = null;
-//                }
-//            }
-//        }
-//
-//        if (currentEntity != null && (shouldKeepName(currentEntity.toString()))) {
-//            companyNames.add(currentEntity.toString());
-//
-//        }
-//    }
 
     private List<Article> getArticlesFromFile(File csv) throws Exception {
         List<Article> list;
@@ -257,9 +262,9 @@ public class ArticleService {
             for (CSVRecord csvRecord : records) {
                 String link = csvRecord.get(0);
                 String title = csvRecord.get(1);
-                var article = new Article(link, title);
+                Article article = new Article(link, title);
                 if (isArticleUrlValid(article)) {
-                    map.put(article.link(), article);
+                    map.put(article.getLink(), article);
                 }
             }
         } catch (IOException e) {
@@ -273,8 +278,10 @@ public class ArticleService {
     }
 
     boolean isArticleUrlValid(Article article) {
-
-        return article.link().startsWith("http://") || article.link().startsWith("https://");
+        if (article.getLink() == null) {
+            return false;
+        }
+        return article.getLink().startsWith("http://") || article.getLink().startsWith("https://");
     }
 
     public String getDomain(String url) {
@@ -298,18 +305,18 @@ public class ArticleService {
 
     private ExtractionBag extractDataFromPage(Article article) {
         long startTime = System.currentTimeMillis();
-        ExtractionBag eb = null;
+        ExtractionBag extractionBag = null;
         try {
-            Document document = Jsoup.connect(article.link()).get();
+            Document document = Jsoup.connect(article.getLink()).get();
             var links = extractLinksFromDocument(document);
-            var text = extractTextFromDocument(document);
-            eb = new ExtractionBag(text, links, new ArrayList<>(), new ArrayList<>(), article);
+            String possibleCompanyNames = extractTextFromDocument(document);
+            extractionBag = new ExtractionBag(article, links, possibleCompanyNames);
             printElapsed(startTime, article);
         } catch (Exception e) {
             logger.severe(e.getMessage());
         }
 
-        return eb;
+        return extractionBag;
     }
 
     private static void printElapsed(long startTime, Article article) {
@@ -324,7 +331,7 @@ public class ArticleService {
 
         logger.info(mm + " Data extracted for page: \uD83D\uDD35\uD83D\uDD35" +
                 " elapsed time in seconds: "
-                + seconds + " \uD83D\uDD35\uD83D\uDD35 article: " + article.title());
+                + seconds + " \uD83D\uDD35\uD83D\uDD35 article: " + article.getTitle());
     }
 
     private boolean filterLink(String link) {
@@ -353,12 +360,16 @@ public class ArticleService {
                 links.add(link);
             }
         }
+        HashMap<String,String> map = new HashMap<>();
+        for (String link : links) {
+            map.put(link,link);
+        }
 
-        return links;
+        return map.values().stream().toList();
     }
 
     public String extractTextFromDocument(Document document) {
-        String extractedText = "";
+
         // Extract all paragraphs from the document
         Elements paragraphs = document.select("p");
         StringBuilder stringBuilder = new StringBuilder();
@@ -367,10 +378,10 @@ public class ArticleService {
             stringBuilder.append(paragraph.text()).append("\n\n");
         }
 
-        extractedText = stringBuilder.toString();
-
+        String extractedText = stringBuilder.toString();
         logger.info(mm + " Text Extracted from page: \uD83D\uDD34 "
-                + extractedText.length() + " bytes");
+                + extractedText.length() + " bytes \uD83C\uDF88");
+
         return extractedText;
     }
 
@@ -387,28 +398,6 @@ public class ArticleService {
                     && !url.contains("nasdaq");
         }
         return false;
-    }
-
-    private File downloadFile() throws IOException {
-        // Initialize the Firebase Admin SDK with the service account credentials
-        GoogleCredentials credentials = GoogleCredentials.fromStream(
-                new FileInputStream("stealthcannabis-firebase.json"));
-        Storage storage = StorageOptions.newBuilder()
-                .setCredentials(credentials)
-                .build().getService();
-        logger.info(mm + " storage: " + storage.toString());
-        // Create a BlobId for the file in the default bucket
-        BlobId blobId = BlobId.of(bucketName, fileName);
-
-        // Get the Blob from the default bucket
-        Blob blob = storage.get(blobId);
-
-        // Download the file to the specified destination path
-        File destinationFile = new File("file_" + System.currentTimeMillis() + ".csv");
-        try (FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
-            blob.downloadTo(outputStream);
-        }
-        return destinationFile;
     }
 
     private void setExclusionsMap() {
@@ -702,6 +691,95 @@ public class ArticleService {
         exclusionsMap.put("USC", "USC");
         exclusionsMap.put("ICC", "ICC");
         exclusionsMap.put("GMR", "GMR");
+
+        exclusionsMap.put("The", "The");
+        exclusionsMap.put("We", "We");
+        exclusionsMap.put("When", "When");
+        exclusionsMap.put("Many", "Many");
+
+        exclusionsMap.put("One", "One");
+        exclusionsMap.put("Even", "Even");
+        exclusionsMap.put("This", "This");
+        exclusionsMap.put("From", "From");
+        exclusionsMap.put("Egypt", "Egypt");
+        exclusionsMap.put("There", "There");
+        exclusionsMap.put("It", "It");
+        exclusionsMap.put("Journal", "Journal");
+        exclusionsMap.put("So", "So");
+        exclusionsMap.put("By", "By");
+        exclusionsMap.put("Consequently", "Consequently");
+        exclusionsMap.put("You", "You");
+        exclusionsMap.put("Its", "Its");
+        exclusionsMap.put("But", "But");
+        exclusionsMap.put("In", "In");
+        exclusionsMap.put("All", "All");
+
+        exclusionsMap.put("Include", "Include");
+        exclusionsMap.put("Nobody", "Nobody");
+        exclusionsMap.put("Everyone", "Everyone");
+        exclusionsMap.put("They", "They");
+        exclusionsMap.put("If", "If");
+        exclusionsMap.put("Therefore", "Therefore");
+        exclusionsMap.put("Simply", "Simply");
+        exclusionsMap.put("Or", "Or");
+        exclusionsMap.put("Just", "Just");
+        exclusionsMap.put("Save", "Save");
+        exclusionsMap.put("Privacy", "Privacy");
+        exclusionsMap.put("Abuse", "Abuse");
+        exclusionsMap.put("SUD", "SUD");
+        exclusionsMap.put("To", "To");
+        exclusionsMap.put("Deputy", "Deputy");
+        exclusionsMap.put("Director", "Director");
+
+        exclusionsMap.put("Very", "Very");
+        exclusionsMap.put("Look", "Look");
+        exclusionsMap.put("Required", "Required");
+        exclusionsMap.put("Comment", "Comment");
+
+        exclusionsMap.put("Name", "Name");
+        exclusionsMap.put("Email", "Email");
+        exclusionsMap.put("Our", "Our");
+        exclusionsMap.put("Some", "Some");
+        exclusionsMap.put("Another", "Another");
+        exclusionsMap.put("Despite", "Despite");
+        exclusionsMap.put("Furthermore", "Furthermore");
+        exclusionsMap.put("However", "However");
+
+        exclusionsMap.put("Language", "Language");
+        exclusionsMap.put("Although", "Although");
+        exclusionsMap.put("Okay", "Okay");
+        exclusionsMap.put("Again", "Again");
+        exclusionsMap.put("Yikes", "Yikes");
+        exclusionsMap.put("Visit", "Visit");
+        exclusionsMap.put("FREE", "FREE");
+        exclusionsMap.put("Free", "Free");
+        exclusionsMap.put("Unauthorized", "Unauthorized");
+        exclusionsMap.put("Policy", "Policy");
+        exclusionsMap.put("More", "More");
+        exclusionsMap.put("Most", "Most");
+
+        exclusionsMap.put("Red", "Red");
+        exclusionsMap.put("Symptom", "Symptom");
+        exclusionsMap.put("Animal", "Animal");
+        exclusionsMap.put("Hot", "Hot");
+        exclusionsMap.put("MILLION", "MILLION");
+        exclusionsMap.put("Meet", "Meet");
+        exclusionsMap.put("Now", "Now");
+        exclusionsMap.put("His", "His");
+        exclusionsMap.put("Who", "Who");
+        exclusionsMap.put("Up", "Up");
+        exclusionsMap.put("Yes", "Yes");
+//        exclusionsMap.put("Save", "Save");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+//        exclusionsMap.put("GMR", "GMR");
+
+
         exclusionList = exclusionsMap.values().stream().toList();
         logger.info(mm + " Exclusion list contains: " + exclusionList.size());
     }

@@ -2,15 +2,13 @@ package com.boha.crawley.services;
 
 import com.boha.crawley.data.DomainData;
 import com.boha.crawley.data.ExtractionBag;
-import com.boha.crawley.data.PossibleCompanyNames;
 import com.boha.crawley.data.chatgpt.ChatGPTResponse;
+import com.boha.crawley.data.chatgpt.ProcessedChatGPTResponse;
 import com.google.api.core.ApiFuture;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.firestore.CollectionReference;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.Query;
-import com.google.cloud.firestore.QuerySnapshot;
+import com.google.cloud.firestore.*;
 import com.google.cloud.storage.*;
+import com.google.cloud.storage.Blob;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
@@ -23,11 +21,8 @@ import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -69,7 +64,7 @@ public class FirebaseService {
 
     }
     static final String extractionData = "extractionData";
-    static final String searchData = "possibleCompanies";
+    static final String companyData = "companyData";
 
     public void addExtractionData(ExtractionBag extractionBag) throws ExecutionException, InterruptedException {
         logger.info(mm + " adding stealth data to Firestore ...");
@@ -77,25 +72,44 @@ public class FirebaseService {
         var res = collectionRef.add(extractionBag);
         logger.info(mm + " extraction bag added: " + res.get().getPath());
     }
-    public void addChatGPTResponse(ChatGPTResponse chatGPTResponse) throws ExecutionException, InterruptedException {
+    public void addProcessedChatResponse(ChatGPTResponse chatGPTResponse) throws ExecutionException, InterruptedException {
         logger.info(mm + " adding stealth data to Firestore ...");
         CollectionReference collectionRef = firestore.collection("chatGPTResponses");
         var res = collectionRef.add(chatGPTResponse);
         logger.info(mm + " chatGPTResponse added: " + res.get().getPath());
     }
-    public PossibleCompanyNames addCompanyNames(List<String> texts) throws ExecutionException, InterruptedException {
-        logger.info(mm + " adding search data to Firestore ...");
-        CollectionReference collectionRef = firestore.collection(searchData);
-        DateFormat df = new SimpleDateFormat("MMM dd yyyy HH:mm");
 
-        PossibleCompanyNames st = new PossibleCompanyNames();
-        st.setDate(df.format(new Date()));
-        st.setSearchId(UUID.randomUUID().toString());
-        st.setCompanyNames(texts);
+    public List<ProcessedChatGPTResponse> getData(String requestId) {
+        logger.severe(mm+"... querying ProcessedChatGPTResponse " +
+                "documents, requestId: " + requestId);
 
-        var res = collectionRef.add(st);
-        logger.info(mm + " search data added to Firestore: " + res.get().getPath());
-        return st;
+        CollectionReference collectionRef = firestore.collection(companyData);
+        // Create a query to filter documents by 'requestId'
+        Query query = collectionRef.whereEqualTo("requestId", requestId);
+        ApiFuture<QuerySnapshot> querySnapshot = query.get();
+        List<ProcessedChatGPTResponse> resultList = new ArrayList<>();
+
+        try {
+            QuerySnapshot snapshot = querySnapshot.get();
+            // Process the documents that match the 'requestId'
+            for (DocumentSnapshot document : snapshot.getDocuments()) {
+                ProcessedChatGPTResponse response = document.toObject(
+                        ProcessedChatGPTResponse.class);
+                resultList.add(response);
+            }
+        } catch (Exception e) {
+            logger.severe(mm+"Error querying documents: " + e.getMessage());
+        }
+        logger.info(mm+" list of ProcessedChatGPTResponse " +
+                "records found: " + resultList.size());
+        return resultList;
+    }
+    public int addProcessedChatResponse(ProcessedChatGPTResponse response) throws ExecutionException, InterruptedException {
+        logger.info(mm + " add processed ChatGPTResponse with addresses, emails and phone numbers to Firestore ...");
+        CollectionReference collectionRef = firestore.collection(companyData);
+        var res = collectionRef.add(response);
+        logger.info(mm + " processed ChatGPTResponse data added to Firestore: " + res.get().getPath());
+        return 0;
     }
 
     public List<DomainData> getDomainDataList() throws ExecutionException, InterruptedException {
@@ -116,7 +130,14 @@ public class FirebaseService {
         Blob blob = storage.get(blobId);
 
         // Download the file to the specified destination path
-        File destinationFile = new File("articles_" + System.currentTimeMillis() + ".csv");
+        File dir = new File("articles");
+        if (!dir.exists()) {
+            boolean ok = dir.mkdir();
+            if (ok) {
+                logger.info(mm+"Directory created: " + dir.getAbsolutePath());
+            }
+        }
+        File destinationFile = new File(dir,"articles_" + System.currentTimeMillis() + ".csv");
         try (FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
             blob.downloadTo(outputStream);
         }

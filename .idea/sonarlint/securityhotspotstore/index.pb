@@ -24,8 +24,6 @@ j
 :src/main/java/com/boha/crawley/data/whois/NameServers.java,c/d/cd09d494d6c0a2866bd9177dbd315fc2f1c51044
 d
 4src/main/java/com/boha/crawley/data/whois/Audit.java,7/c/7c8513935a7c88d03a83784cbb961c091d88a65a
-`
-0src/main/java/com/boha/crawley/data/Article.java,0/4/046e2d2be24cef8e31987cca474bc3640a39489f
 f
 6src/main/java/com/boha/crawley/data/DomainDataBag.java,e/3/e38eaeeff9e3fcf9d26fbab74731b58faf2db5e7
 ^
@@ -42,12 +40,8 @@ d
 4src/main/java/com/boha/crawley/data/ChatRequest.java,1/9/19cd18a1f0cbe51fb6466a2c2d7a10bcd7e82b55
 P
  wrapper/maven-wrapper.properties,9/c/9c84dc6504fe6e6366e5aa2fc12e1ddd0b5e1d1f
-7
-HELP.md,1/a/1a273f73b7a477b0745593641bd708a6182c7ad5
 t
 Dsrc/main/java/com/boha/crawley/data/whois/AdministrativeContact.java,8/2/82e7c4a825ea55d56e056848fd154995c0e915f4
-A
-articles2-dev.csv,6/b/6b4d9a19c8b75ee04c878318f9b9b959076601b7
 j
 :src/main/java/com/boha/crawley/data/whois/WhoIsRecord.java,5/0/5070d30d04ea6f5a1b81c9f6c9e34370f1d7714b
 @
