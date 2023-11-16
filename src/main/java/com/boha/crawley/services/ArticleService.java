@@ -4,14 +4,13 @@ package com.boha.crawley.services;
 import com.boha.crawley.data.Article;
 import com.boha.crawley.data.ExtractionBag;
 import com.boha.crawley.data.chatgpt.ProcessedChatGPTResponse;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -24,7 +23,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.mail.MessagingException;
-import java.io.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DecimalFormat;
@@ -36,38 +38,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class ArticleService {
-//    public void init() {
-//        Properties props = new Properties();
-//        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,ner");
-//        pipeline = new StanfordCoreNLP(props);
-//        logger.info(mm + " Stanford NLP pipeline set up!");
-//        // Set up pipeline properties
-//        synchronized (lock) {
-//            if (pipeline == null) {
-//                pipeline = new StanfordCoreNLP(props);
-//            }
-//        }
-//    }
 
-    @Autowired
-    DomainOwnerInfoService domainOwnerInfoService;
+
     @Autowired
     FirebaseService firebaseService;
-
-//    @Autowired
-//    WhoIsService whoIsService;
-
-    @Autowired
-    CSVWarrior csvWarrior;
-
-    @Autowired
-    FreaksWhoIsService freaksWhoIsService;
-
     @Autowired
     EmailService emailService;
 
@@ -79,7 +56,7 @@ public class ArticleService {
 
 
     static final Logger logger = Logger.getLogger(ArticleService.class.getSimpleName());
-    static final String mm = "ArticleService: \uD83E\uDD66\uD83E\uDD66\uD83E\uDD66";
+    static final String mm = "ArticleService: \uD83E\uDD66\uD83E\uDD66\uD83E\uDD66 ";
     static final String mm2 = "ArticleService:  \uD83D\uDD35 \uD83D\uDD35 \uD83D\uDD35 \uD83D\uDD35 \uD83D\uDD356";
     @Value("${bucketName}")
     private String bucketName;
@@ -89,16 +66,14 @@ public class ArticleService {
 
     /**
      * Downloads the articles csv file and creates the extracted data
-     *
-     * @return List<DomainData>
      */
 
 
     @Async
-    public CompletableFuture<Void> parseArticlesAsync(File articleFile, String email) {
-        return CompletableFuture.runAsync(() -> {
+    public void parseArticlesAsync(File articleFile, String email) {
+        CompletableFuture.runAsync(() -> {
             try {
-                parseArticles(articleFile, email);
+                parseArticles(getArticlesFromFile(articleFile), email);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException("parseArticles failed: " + e.getMessage());
@@ -106,12 +81,105 @@ public class ArticleService {
         });
     }
 
+    private List<Article> getArticles(File articleFile) throws Exception {
+        if (articleFile == null) {
+            articleFile = firebaseService.downloadFile();
+        }
+        logger.info(mm + mm + " parseArticles: we have a file!! ");
+        if (!articleFile.exists()) {
+            throw new RuntimeException();
+        }
+
+        logger.info(mm + " articles file: " + articleFile.getAbsolutePath()
+                + " length: " + articleFile.length() + " bytes");
+        return getArticlesFromFile(articleFile);
+    }
     @Async
-    public void parseArticles(File articleFile, String email) throws Exception {
+    public void parseArticles(List<Article> articles, String email) throws Exception {
         logger.info(mm + " parse Articles starting ..........");
         long startTime = System.currentTimeMillis();
         List<ExtractionBag> extractionBags;
 
+        int totAddr = 0;
+        int totEmail = 0;
+        int totPhone = 0;
+        int numberOfSpreadsheetLines = 0;
+        String requestId = UUID.randomUUID().toString();
+        String userUrl = stealthUrl + "getSpreadsheet?requestId=" + requestId;
+
+        try {
+            logger.info(mm + "parseArticles: Do we get here with " + articles.size() + " articles? ..............................");
+            extractionBags = getExtractedData(articles, email);
+
+            for (ExtractionBag extractionBag : extractionBags) {
+                if (extractionBag.getText() == null || extractionBag.getText().isEmpty()) {
+                    continue;
+                }
+                String filteredText = NameExtractor.extractPossibleNames(extractionBag.getText());
+                List<String> pNames = chatGPTService.getCompanyNamesFromText(filteredText);
+                if (!pNames.isEmpty()) {
+                    ProcessedChatGPTResponse resp = bossService.digForData(pNames);
+                    String id = UUID.randomUUID().toString();
+                    try {
+                        if (resp != null) {
+                            resp.setRequesterEmail(email);
+                            resp.setArticle(extractionBag.getArticle());
+                            resp.setResponseId(id);
+                            resp.setRequestId(requestId);
+                            int ok = firebaseService.addProcessedChatGPTResponse(resp);
+                            if (ok == 0) {
+                                totAddr += resp.getAddressList().size();
+                                totEmail += resp.getEmailList().size();
+                                totPhone += resp.getPhoneList().size();
+                                numberOfSpreadsheetLines++;
+                                logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle());
+                                logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
+                                        "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
+                                //todo -- create self api url that creates csv, send email ...
+                            }
+                        }
+                    } catch (ExecutionException | InterruptedException e) {
+                        logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
+                                + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    logger.info(mm + " \uD83D\uDD35 no companies found in text " +
+                            "\uD83D\uDD35\uD83D\uDD35\uD83D\uDD35 ");
+                    if (extractionBag.getArticle() != null) {
+                        logger.info(mm + "Article with no companies: " + extractionBag.getArticle().getTitle());
+                    }
+                }
+            }
+            logger.info(mm + " Number of Spreadsheet lines: " + numberOfSpreadsheetLines);
+            //send email
+            var addr = NumberFormat.getNumberInstance().format(totAddr);
+            var email1 = NumberFormat.getNumberInstance().format(totEmail);
+            var phone = NumberFormat.getNumberInstance().format(totPhone);
+
+            if (!extractionBags.isEmpty()) {
+                sendEmail(addr, email1, phone, 200, email, userUrl);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendEmail("", "", "", 400, email, userUrl);
+            throw e;
+        }
+
+
+        logger.info("\n" + mm + " WORK COMPLETED! ... extracted data added: " + extractionBags.size()
+                + " articles processed \uD83D\uDD35\uD83D\uDD35 ");
+
+        printElapsed(startTime, extractionBags);
+
+    }
+
+    public List<ProcessedChatGPTResponse> parseArticlesSync(File articleFile, String email) throws Exception {
+        logger.info(mm + " parse Articles starting ..........");
+        long startTime = System.currentTimeMillis();
+        List<ExtractionBag> extractionBags;
+        List<ProcessedChatGPTResponse> responses = new ArrayList<>();
         if (articleFile == null) {
             articleFile = firebaseService.downloadFile();
         }
@@ -129,39 +197,53 @@ public class ArticleService {
         int numberOfSpreadsheetLines = 0;
         String requestId = UUID.randomUUID().toString();
         String userUrl = stealthUrl + "getSpreadsheet?requestId=" + requestId;
+
         try {
             var articles = getArticlesFromFile(articleFile);
+            logger.info(mm + "parseArticles: Do we get here with " + articles.size() + " articles? ..............................");
             extractionBags = getExtractedData(articles, email);
 
             for (ExtractionBag extractionBag : extractionBags) {
-                List<String> pNames = chatGPTService.getCompanyNames(extractionBag.getText());
-                ProcessedChatGPTResponse resp = bossService.digForData(pNames);
-                String id = UUID.randomUUID().toString();
-                try {
-                    if (resp != null) {
-                        resp.setRequesterEmail(email);
-                        resp.setArticle(extractionBag.getArticle());
-                        resp.setResponseId(id);
-                        resp.setRequestId(requestId);
-                        int ok = firebaseService.addProcessedChatResponse(resp);
-                        if (ok == 0) {
-                            totAddr += resp.getAddressList().size();
-                            totEmail += resp.getEmailList().size();
-                            totPhone += resp.getPhoneList().size();
-                            numberOfSpreadsheetLines++;
-                            logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle());
-                            logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
-                                    "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
-                            //todo -- create self api url that creates csv, send email ...
+                if (extractionBag.getText() == null || extractionBag.getText().isEmpty()) {
+                    continue;
+                }
+                List<String> pNames = chatGPTService.getCompanyNamesFromText(extractionBag.getText());
+                if (!pNames.isEmpty()) {
+                    ProcessedChatGPTResponse resp = bossService.digForData(pNames);
+                    String id = UUID.randomUUID().toString();
+                    try {
+                        if (resp != null) {
+                            resp.setRequesterEmail(email);
+                            resp.setArticle(extractionBag.getArticle());
+                            resp.setResponseId(id);
+                            resp.setRequestId(requestId);
+                            int ok = firebaseService.addProcessedChatGPTResponse(resp);
+                            if (ok == 0) {
+                                totAddr += resp.getAddressList().size();
+                                totEmail += resp.getEmailList().size();
+                                totPhone += resp.getPhoneList().size();
+                                numberOfSpreadsheetLines++;
+                                responses.add(resp);
+                                logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle());
+                                logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
+                                        "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
+                                //todo -- create self api url that creates csv, send email ...
+                            }
                         }
+                    } catch (ExecutionException | InterruptedException e) {
+                        logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
+                                + e.getMessage());
+                        e.printStackTrace();
                     }
-                } catch (ExecutionException | InterruptedException e) {
-                    logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
-                            + e.getMessage());
-                    e.printStackTrace();
+                } else {
+                    logger.info(mm + " \uD83D\uDD35 no companies found in text " +
+                            "\uD83D\uDD35\uD83D\uDD35\uD83D\uDD35 ");
+                    if (extractionBag.getArticle() != null) {
+                        logger.info(mm + "Article with no companies: " + extractionBag.getArticle().getTitle());
+                    }
                 }
             }
-            logger.info(mm+" Number of Spreadsheet lines: " + numberOfSpreadsheetLines);
+            logger.info(mm + " Number of Spreadsheet lines: " + numberOfSpreadsheetLines);
             //send email
             var addr = NumberFormat.getNumberInstance().format(totAddr);
             var email1 = NumberFormat.getNumberInstance().format(totEmail);
@@ -173,7 +255,7 @@ public class ArticleService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            sendEmail("","","", 400,email, userUrl);
+            sendEmail("", "", "", 400, email, userUrl);
             throw e;
         }
 
@@ -182,6 +264,7 @@ public class ArticleService {
                 + " articles processed \uD83D\uDD35\uD83D\uDD35 ");
 
         printElapsed(startTime, extractionBags);
+        return responses;
 
     }
 
@@ -230,19 +313,34 @@ public class ArticleService {
 
     @NotNull
     private List<ExtractionBag> getExtractedData(List<Article> articles, String email) {
+        logger.info(mm + " getExtractedData: Do we get here with " + articles.size() + " articles? ..............................");
 
         List<ExtractionBag> extractionBags = new ArrayList<>();
 
-        for (Article article : articles) {
-            if (filterLink(article.getLink())) {
-                var bag = extractDataFromPage(article);
-                if (bag != null) {
-                    bag.setArticle(article);
-                    extractionBags.add(bag);
+        long start = System.currentTimeMillis();
+        try {
+            for (Article article : articles) {
+                if (filterLink(article.getLink())) {
+                    var bag = extractDataFromPage(article);
+                    if (bag != null) {
+                        bag.setArticle(article);
+                        extractionBags.add(bag);
+                    }
                 }
             }
+        } catch (Exception e) {
+            logger.severe(mm + "\uD83D\uDD34 getExtractedData: " +
+                    "Error scraping data: " + e.getMessage());
         }
-        //freaksWhoIsService.getDomainDetails(extractionBags);
+        long end = System.currentTimeMillis();
+        long elapsedTimeSeconds = (end - start ) / 1000;
+        DecimalFormat decimalFormat = new DecimalFormat("#.##");
+
+        String seconds = decimalFormat.format(elapsedTimeSeconds);
+
+        logger.info(mm + " Data extracted for all articles: \uD83D\uDD35\uD83D\uDD35" +
+                " elapsed time in seconds: "
+                + seconds + " \uD83D\uDD35\uD83D\uDD35 total extractionBags: " + extractionBags.size());
         return extractionBags;
     }
 
@@ -254,12 +352,10 @@ public class ArticleService {
         List<Article> list;
 
         HashMap<String, Article> map;
-        try {
-            Reader in = new FileReader(csv.getAbsolutePath());
-            Iterable<CSVRecord> records = CSVFormat.RFC4180.parse(in);
-
+        try (Reader in = new FileReader(csv.getAbsolutePath())) {
+            CSVParser parser = CSVFormat.RFC4180.parse(in);
             map = new HashMap<>();
-            for (CSVRecord csvRecord : records) {
+            for (CSVRecord csvRecord : parser) {
                 String link = csvRecord.get(0);
                 String title = csvRecord.get(1);
                 Article article = new Article(link, title);
@@ -271,8 +367,8 @@ public class ArticleService {
             e.printStackTrace();
             throw new Exception("Unable to parse csv file: " + e.getMessage());
         }
-        list = map.values().stream().toList();
-        logger.info(mm + mm + " articles found: \uD83C\uDF4E \uD83C\uDF4E \uD83C\uDF4E "
+        list = new ArrayList<>(map.values());
+        logger.info(mm + mm + "getArticlesFromFile: articles found: \uD83C\uDF4E \uD83C\uDF4E \uD83C\uDF4E "
                 + list.size());
         return list;
     }
@@ -302,20 +398,90 @@ public class ArticleService {
         }
         return dom;
     }
+    OkHttpClient client = new OkHttpClient();
+    private static final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
+    private Document getDocument(String link) throws Exception {
+
+        Request request = new Request.Builder()
+                .url(link)
+//                .header("User-Agent", userAgent)
+                .build();
+
+        Document document = null;
+        try {
+            document = getDocument(request, document);
+        } catch (Exception e) {
+            logger.info(mm+" error: will retry in 5 seconds " +
+                    "\uD83C\uDF4E\uD83C\uDF4E\uD83C\uDF4E "+ e.getMessage());
+            Thread.sleep(5000);
+            document = getDocument(request,document);
+        }
+        return document;
+    }
+
+    private Document getDocument(Request request, Document document) {
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Execute the request and get the response
+            Response response = client.newCall(request).execute();
+            assert response.body() != null;
+            String html = response.body().string();
+            logger.info(mm+" html length: \uD83C\uDF4E " + html.length() + " bytes downloaded");
+            document = Jsoup.parse(html);
+            // Close the response body
+            response.close();
+        } catch (IOException e) {
+            //e.printStackTrace();
+            logger.info(mm+"  \uD83D\uDD34 getLink Error: " + e.getMessage() + "  \uD83D\uDD34\uD83D\uDD34");
+        }
+        printRequest(startTime, " Web page downloaded: \uD83D\uDD35\uD83D\uDD35", request.url().toString());
+        return document;
+    }
+
+    private static void printRequest(long startTime, String message, String url) {
+        long endTime = System.currentTimeMillis();
+        // Calculate the elapsed time in seconds
+        long elapsedTimeMillis = endTime - startTime;
+        double elapsedTimeSeconds = elapsedTimeMillis / 1000.0;
+        DecimalFormat decimalFormat = new DecimalFormat("#.##");
+        String seconds = decimalFormat.format(elapsedTimeSeconds);
+
+        logger.info(mm + message +
+                " elapsed time in seconds: "
+                + seconds + " \uD83D\uDD35\uD83D\uDD35 url: " + url);
+    }
 
     private ExtractionBag extractDataFromPage(Article article) {
+        logger.info(mm + "extractDataFromPage: article: "
+                + article.getTitle() + " link: " + article.getLink());
         long startTime = System.currentTimeMillis();
         ExtractionBag extractionBag = null;
-        try {
-            Document document = Jsoup.connect(article.getLink()).get();
-            var links = extractLinksFromDocument(document);
-            String possibleCompanyNames = extractTextFromDocument(document);
-            extractionBag = new ExtractionBag(article, links, possibleCompanyNames);
-            printElapsed(startTime, article);
-        } catch (Exception e) {
-            logger.severe(e.getMessage());
-        }
 
+            try {
+                Document document = getDocument(article.getLink());
+                if (document != null) {
+                    var links = extractLinksFromDocument(document);
+                    String textFromWebsite = extractTextFromDocument(document);
+                    extractionBag = new ExtractionBag(article, links, textFromWebsite);
+                    printElapsed(startTime, article);
+                }
+            } catch (Exception e) {
+                logger.severe(mm + "\uD83D\uDD34 extractDataFromPage SocketTimeoutException: " +
+                        "with jSoup \uD83D\uDD34\uD83D\uDD34 ERROR; \n"
+                        + e.getMessage() + " \uD83D\uDD34 article: "
+                        + article.getTitle());
+                logger.severe(mm + "\uD83D\uDD34\uD83D\uDD34 IOException error: " +
+                        e.getMessage() + "\uD83D\uDD34\uD83D\uDD34 ");
+
+
+            }
+
+        assert extractionBag != null;
+        printRequest(startTime, "Data extracted from page: "
+                        + (extractionBag.getText().length() / 1024) + "K bytes - "
+                 , article.getTitle());
         return extractionBag;
     }
 
@@ -326,7 +492,6 @@ public class ArticleService {
         double elapsedTimeSeconds = elapsedTimeMillis / 1000.0;
         DecimalFormat decimalFormat = new DecimalFormat("#.##");
 
-        // Format the double value to two decimal places
         String seconds = decimalFormat.format(elapsedTimeSeconds);
 
         logger.info(mm + " Data extracted for page: \uD83D\uDD35\uD83D\uDD35" +
@@ -342,7 +507,7 @@ public class ArticleService {
                 || link.contains("instagram")
                 || link.contains("technocrunch")
                 || link.contains("nasdaq")) {
-            logger.info(mm + " LINK IGNORED: " + getDomain(link));
+            logger.info(mm + " LINK IGNORED: " + link);
             return false;
         } else {
             return true;
@@ -360,9 +525,9 @@ public class ArticleService {
                 links.add(link);
             }
         }
-        HashMap<String,String> map = new HashMap<>();
+        HashMap<String, String> map = new HashMap<>();
         for (String link : links) {
-            map.put(link,link);
+            map.put(link, link);
         }
 
         return map.values().stream().toList();
@@ -378,11 +543,10 @@ public class ArticleService {
             stringBuilder.append(paragraph.text()).append("\n\n");
         }
 
-        String extractedText = stringBuilder.toString();
-        logger.info(mm + " Text Extracted from page: \uD83D\uDD34 "
-                + extractedText.length() + " bytes \uD83C\uDF88");
+        //        logger.info(mm + " Text Extracted from page: \uD83D\uDD34 "
+//                + extractedText.length() + " bytes \uD83C\uDF88");
 
-        return extractedText;
+        return stringBuilder.toString();
     }
 
     private static boolean isValidUrl(String url) {

@@ -1,9 +1,8 @@
 package com.boha.crawley.controllers;
 
-import com.boha.crawley.services.ArticleService;
-import com.boha.crawley.services.CSVWarrior;
-import com.boha.crawley.services.ChatGPTService;
-import com.boha.crawley.services.WhoIsService;
+import com.boha.crawley.configs.WebConfig;
+import com.boha.crawley.data.StealthMessage;
+import com.boha.crawley.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
@@ -17,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
@@ -40,6 +41,8 @@ public class MainController {
     WhoIsService whoIsService;
     @Autowired
     ChatGPTService chatGPTService;
+    @Autowired
+    CloudTasksService cloudTasksService;
 
     @GetMapping("/")
     public String hello() {
@@ -89,6 +92,20 @@ public class MainController {
     public ResponseEntity<Object> getDomainInfo(@RequestParam String domain) {
         try {
             var res = whoIsService.getDomainDetails(domain);
+            return ResponseEntity.ok().body(res);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new CustomResponse(400,
+                            "getDomainInfo failed: " + e.getMessage(),
+                            df.format(new Date())));
+        }
+    }
+
+    @GetMapping("getCompanyNamesFromText")
+    public ResponseEntity<Object> getCompanyNamesFromText(@RequestParam String text) {
+        try {
+            String mText = NameExtractor.extractPossibleNames(text);
+            List<String> res = chatGPTService.getCompanyNamesFromText(mText);
             return ResponseEntity.ok().body(res);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
@@ -150,7 +167,8 @@ public class MainController {
 
     @PostMapping("/uploadArticles")
     @Async
-    public CompletableFuture<String> uploadArticles(@RequestParam String email, @RequestParam("file") MultipartFile multipartFile) throws IOException {
+    public CompletableFuture<String> uploadArticles(@RequestParam String email,
+                                                    @RequestParam("file") MultipartFile multipartFile) throws IOException {
         logger.info(mm + " start the fucking uploadArticles ... ");
 
         // Convert MultipartFile to File
@@ -165,6 +183,24 @@ public class MainController {
                 throw new RuntimeException("Upload articles failed: " + e.getMessage());
             }
         });
+    }
+
+    @PostMapping("/uploadArticlesAsync")
+    public ResponseEntity<Object> uploadArticlesAsync(@RequestParam String email,
+                                                  @RequestParam("file") MultipartFile multipartFile) throws IOException {
+        logger.info(mm + " start the fucking cloudTasksService Task ... ");
+
+        // Convert MultipartFile to File
+        File file = convertMultipartFileToFile(multipartFile);
+        try {
+            articleService.parseArticlesAsync(file,email);
+            return ResponseEntity.ok("\uD83D\uDD35 Your articles may take a while to process. " +
+                    "An email with a download link will be sent to " + email + " when the processing is completed");
+        } catch (Exception e) {
+            logger.severe("uploadArticlesAsync failed: " + e.getMessage());
+            return ResponseEntity.badRequest().body("parseArticles failed:");
+        }
+
     }
 
 //    @Operation(summary = "Upload spreadsheet and scrape links found")

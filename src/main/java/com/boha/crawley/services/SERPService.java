@@ -1,5 +1,6 @@
 package com.boha.crawley.services;
 
+import com.boha.crawley.data.ExtractionBag;
 import com.boha.crawley.data.serp.OrganicResult;
 import com.boha.crawley.data.serp.SERPResponse;
 import com.google.gson.Gson;
@@ -19,6 +20,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -56,11 +58,14 @@ public class SERPService {
 //    }
 
     private static final String SERP_URL = "https://api.scaleserp.com/search?api_key=";
-    public String getPossibleAddresses(String query) {
-        logger.info(mm+" ............ Getting possible addresses from SERP ....");
+    public String getPossibleAddresses(String companyName) {
+
+        logger.info(mm+" ............ Getting possible addresses from SERP ....companyName: " + companyName);
+
         List<String> foundAddresses = new ArrayList<>();
+        long start = System.currentTimeMillis();
         try {
-            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String encodedQuery = URLEncoder.encode(companyName, StandardCharsets.UTF_8);
 
             // Build the request URL
             String requestUrl = SERP_URL
@@ -71,7 +76,7 @@ public class SERPService {
             HttpURLConnection connection = (HttpURLConnection) mUrl.openConnection();
             connection.setRequestMethod("GET");
             int responseCode = connection.getResponseCode();
-            logger.info(mm + " getPossibleAddresses : response code: " + responseCode);
+//            logger.info(mm + " getPossibleAddresses : response code: " + responseCode);
             // Read the response from the input stream
             BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             StringBuilder response = new StringBuilder();
@@ -103,10 +108,23 @@ public class SERPService {
         for (String address : foundAddresses) {
             sb.append(address).append(" ");
         }
-        logger.info(mm + " SERP has responded! " + foundAddresses.size() +
-                " addresses found \uD83D\uDD35 ");
+
+        printElapsed(start);
         return sb.toString();
     }
 
+    private static void printElapsed(long startTime) {
+        //
+        long endTime = System.currentTimeMillis();
+        long elapsedTimeMillis = endTime - startTime;
+        double elapsedTimeMinutes = elapsedTimeMillis / 1000.0 / 60;
+        double elapsedTimeSeconds = elapsedTimeMillis / 1000.0;
+        DecimalFormat decimalFormat = new DecimalFormat("#.##");
+        String minutes = decimalFormat.format(elapsedTimeMinutes);
+        String seconds = decimalFormat.format(elapsedTimeSeconds);
 
+        logger.info(mm+"\uD83C\uDF4A\uD83C\uDF4A\uD83C\uDF4A SERP call complete: "
+                + minutes + " elapsed minutes;  " + seconds + " seconds " +
+                "\uD83E\uDD4F \uD83D\uDD35\uD83D\uDD35");
+    }
 }

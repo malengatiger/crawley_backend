@@ -1,5 +1,6 @@
 package com.boha.crawley.services;
 
+import com.boha.crawley.data.ExtractionBag;
 import com.boha.crawley.data.chatgpt.Address;
 import com.boha.crawley.data.chatgpt.*;
 import com.google.api.client.util.DateTime;
@@ -17,12 +18,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /*
 Which of the following are companies? Dell, dSAA, Apple Inc, Sammy Sosa, Trees, IBM, Chase Manhattan, Frank Sinatra, Philadelphia,
@@ -33,7 +33,6 @@ OpenAI, Solly Sombra, Citi Bank, Massey Ferguson
 public class ChatGPTService {
     static final Logger logger = Logger.getLogger(ArticleService.class.getSimpleName());
     static final String mm = "\uD83C\uDF6F ChatGPTService: \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F";
-    //https://api.openai.com/v1/chat/completions
     private static final String API_URL =
             "https://api.openai.com/v1/chat/completions";
     private final OkHttpClient client;
@@ -58,7 +57,7 @@ public class ChatGPTService {
 
 //    public static void main(String[] args) {
 //        ChatGPTService service = new ChatGPTService();
-//        service.chatGPTKey = "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";
+//        service.chatGPTKey = "";
 //
 //        String fromSERP = "Dell SAS 1 rond-point Benjamin Franklin 34938 Montpellier " +
 //                "Cedex 9. France. Informations relatives à la société. " +
@@ -147,7 +146,7 @@ public class ChatGPTService {
             addressList, emailList, phoneList
     );
 
-    public List<String> getCompanyNames(List<String> possibleNames) throws IOException {
+    private List<String> getCompanyNamesFromList(List<String> possibleNames) throws IOException {
         StringBuilder sb = new StringBuilder();
         for (String name : possibleNames) {
             sb.append(name).append(" ");
@@ -158,46 +157,14 @@ public class ChatGPTService {
                 "Return list of json objects. Each result object should have 1 JSON field: companyName");
         Request r = getRequest(cr);
         String responseBody = makeTheCall(r);
-        assert responseBody != null;
-        ChatGPTResponse chatGPTResponse = G.fromJson(responseBody, ChatGPTResponse.class);
-
-        if (chatGPTResponse != null) {
-            for (Choice choice : chatGPTResponse.getChoices()) {
-                if (choice.getMessage().getContent().contains("[")) {
-                    JSONArray array = new JSONArray(choice.getMessage().getContent());
-                    for (int i = 0; i < array.length() ; i++) {
-                        JSONObject object = array.getJSONObject(i);
-                        companies.add(object.getString("companyName"));
-                    }
-                }
-            }
-
-        }
-        logger.info(mm+" \uD83C\uDF88 chatGPT found " + companies.size() +
-                " possible company names \uD83C\uDF88\uD83C\uDF88");
-        for (String company : companies) {
-            logger.info(mm + " company, maybe? " + company + " \uD83C\uDF88\uD83C\uDF88\uD83C\uDF88");
-        }
-        return companies;
-    }
-    public List<String> getCompanyNames(String text) throws IOException {
-        logger.info(mm+"Getting chatGPT to extract possible companies from text ..........");
-        List<String> companies = new ArrayList<>();
-        ChatGPTRequest cr = new ChatGPTRequest();
-        buildChatRequest(text, cr, "Extract names of possible commercial companies from the text. " +
-                "Return list of json objects. Each result object should have 1 JSON field: companyName");
-        Request r = getRequest(cr);
-        String responseBody = makeTheCall(r);
-        assert responseBody != null;
-
-        try {
+        if (responseBody != null) {
             ChatGPTResponse chatGPTResponse = G.fromJson(responseBody, ChatGPTResponse.class);
 
             if (chatGPTResponse != null) {
                 for (Choice choice : chatGPTResponse.getChoices()) {
                     if (choice.getMessage().getContent().contains("[")) {
                         JSONArray array = new JSONArray(choice.getMessage().getContent());
-                        for (int i = 0; i < array.length() ; i++) {
+                        for (int i = 0; i < array.length(); i++) {
                             JSONObject object = array.getJSONObject(i);
                             companies.add(object.getString("companyName"));
                         }
@@ -205,30 +172,74 @@ public class ChatGPTService {
                 }
 
             }
-        } catch (JsonSyntaxException | JSONException e) {
-            logger.severe(mm+"Unable to process response from ChatGPT ... ");
-            e.printStackTrace();
+            logger.info(mm + " \uD83C\uDF88 chatGPT found " + companies.size() +
+                    " possible company names \uD83C\uDF88\uD83C\uDF88");
+            for (String company : companies) {
+                logger.info(mm + " company, maybe? " + company + " \uD83C\uDF88\uD83C\uDF88\uD83C\uDF88");
+            }
+        }
+        return companies;
+    }
+
+    public List<String> getCompanyNamesFromText(String textFromWebsite) throws IOException {
+        logger.info(mm + "Getting chatGPT to extract possible companies from Website" +
+                " .......... " + textFromWebsite.length() + " bytes from web page");
+        List<String> companies = new ArrayList<>();
+        if (textFromWebsite.isEmpty()) {
             return companies;
         }
-        logger.info(mm+" \uD83C\uDF88\uD83C\uDF88\uD83C\uDF88 chatGPT found " + companies.size()
-                + " possible company names \uD83C\uDF88\uD83C\uDF88");
-        for (String company : companies) {
-            logger.info(mm + " company, maybe?  ✅ " + company + " \uD83C\uDF88\uD83C\uDF88\uD83C\uDF88");
+
+        ChatGPTRequest cr = new ChatGPTRequest();
+        buildChatRequest(textFromWebsite, cr, "Extract names of possible commercial companies from the textFromWebsite. " +
+                "Return list of json objects. Each result object should have 1 JSON field: companyName. Exclude government and educational institutions");
+        Request r = getRequest(cr);
+        String responseBody = makeTheCall(r);
+        if (responseBody != null) {
+            try {
+                ChatGPTResponse chatGPTResponse = G.fromJson(responseBody, ChatGPTResponse.class);
+                if (chatGPTResponse != null) {
+                    for (Choice choice : chatGPTResponse.getChoices()) {
+                        if (choice.getMessage().getContent().contains("[")) {
+                            JSONArray array = new JSONArray(choice.getMessage().getContent());
+                            for (int i = 0; i < array.length(); i++) {
+                                JSONObject object = array.getJSONObject(i);
+                                companies.add(object.getString("companyName"));
+                            }
+                        }
+                    }
+                    logger.info(mm + " companies from raw textFromWebsite: " + companies.size());
+                }
+            } catch (JsonSyntaxException | JSONException e) {
+                logger.severe(mm + "\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34" +
+                        "Unable to process response from ChatGPT ... ");
+                e.printStackTrace();
+                return companies;
+            }
+            logger.info(mm + " \uD83C\uDF88\uD83C\uDF88\uD83C\uDF88 chatGPT found " + companies.size()
+                    + " possible company names \uD83C\uDF88\uD83C\uDF88");
+
+            for (String company : companies) {
+                logger.info(mm + "getCompanyNamesFromText: ✅ ✅ \uD83C\uDF4E " +
+                        "company: \uD83C\uDF4E\uD83C\uDF4E\uD83C\uDF4E" + company);
+            }
         }
         return companies;
     }
 
 
-    public ProcessedChatGPTResponse findCompanyDetails(String possibleCompanyName) {
-        findCompanyDetails(possibleCompanyName, PHONE);
-        findCompanyDetails(possibleCompanyName, EMAIL);
-        findCompanyDetails(possibleCompanyName, ADDRESS);
+    public ProcessedChatGPTResponse findCompanyDetailsFromText(String textFromSERP) {
+        if (textFromSERP == null || textFromSERP.isEmpty()) {
+            return null;
+        }
+        findCompanyDetailsFromText(textFromSERP, PHONE);
+        findCompanyDetailsFromText(textFromSERP, EMAIL);
+        findCompanyDetailsFromText(textFromSERP, ADDRESS);
 
         return response;
     }
 
-    private void findCompanyDetails(String possibleCompanyName, int type) {
-        logger.info(mm+"... finding company info: " + possibleCompanyName);
+    private void findCompanyDetailsFromText(String textFromSERP, int type) {
+        logger.info(mm + "... finding company details from textFromSERP, type: " + type);
         ChatGPTRequest cr = new ChatGPTRequest();
         String addressFormat = "Each of the result json objects should have 6 JSON fields: street, city, street, zip, state, country";
         String emailFormat = "Each of the result json objects should have 1 JSON field: email";
@@ -247,35 +258,36 @@ public class ChatGPTService {
         } else {
             prompt = "Extract address, telephone and email";
         }
-        logger.info("\n\n" + mm + "findAddressOrPhoneOrEmail: prompt to be used: "
-                + prompt + " type: " + type + "\n\n");
-        buildChatRequest(possibleCompanyName, cr, prompt);
+
+        buildChatRequest(textFromSERP, cr, prompt);
         try {
-            logger.info(mm + " calling ChatGPT ... \uD83D\uDD34 " + API_URL);
+            logger.info(mm + " findCompanyDetailsFromText: calling ChatGPT ... " +
+                    "\uD83D\uDD34 " + API_URL);
             Request request = getRequest(cr);
             String responseBody;
             responseBody = makeTheCall(request);
+
             if (responseBody == null) return;
 
             ChatGPTResponse chatGPTResponse = G.fromJson(responseBody, ChatGPTResponse.class);
             switch (type) {
                 case PHONE:
-                    processPhoneResponse(chatGPTResponse.getChoices(), possibleCompanyName);
+                    processPhoneResponse(chatGPTResponse.getChoices());
                     break;
                 case EMAIL:
-                    processEmailResponse(chatGPTResponse.getChoices(), possibleCompanyName);
+                    processEmailResponse(chatGPTResponse.getChoices());
                     break;
                 case ADDRESS:
-                    processAddressResponse(chatGPTResponse.getChoices(), possibleCompanyName);
+                    processAddressResponse(chatGPTResponse.getChoices());
                     break;
                 default:
                     break;
             }
 
             if (firebaseService != null) {
-                firebaseService.addProcessedChatResponse(chatGPTResponse);
+                firebaseService.addChatGPTResponse(chatGPTResponse);
             }
-            logger.info(mm + " end of ChatGPT response!");
+            //logger.info(mm + " end of ChatGPT response!");
         } catch (IOException e) {
             logger.severe("\uD83D\uDC7F\uD83D\uDC7F\uD83D\uDC7F " + e.getMessage());
             e.printStackTrace();
@@ -284,8 +296,7 @@ public class ChatGPTService {
         }
     }
 
-    private void processEmailResponse(List<Choice> choices, String possibleCompanyName) {
-        logger.info("\n\n\n" + mm + " processEmailResponse request type " + "\n\n");
+    private void processEmailResponse(List<Choice> choices) {
         for (Choice choice : choices) {
             logger.info(mm + " role: " + choice.getMessage().getRole() +
                     "  \uD83D\uDEC4\uD83D\uDEC4\uD83D\uDEC4 content: " + choice.getMessage().getContent()
@@ -294,24 +305,25 @@ public class ChatGPTService {
             try {
                 if (choice.getMessage().getContent().contains("[")) {
                     JSONArray messageArray = new JSONArray(choice.getMessage().getContent());
-                    handleEmail(emailList, messageArray, possibleCompanyName);
+                    handleEmail(emailList, messageArray);
                 } else {
-                    JSONObject obj = new JSONObject(choice.getMessage().getContent());
-                    JSONArray arr = new JSONArray();
-                    arr.put(obj);
-                    handleEmail(emailList, arr, possibleCompanyName);
+                    if (choice.getMessage().getContent().contains("{")) {
+                        JSONObject obj = new JSONObject(choice.getMessage().getContent());
+                        JSONArray arr = new JSONArray();
+                        arr.put(obj);
+                        handleEmail(emailList, arr);
+                    }
                 }
 
             } catch (JSONException e) {
                 logger.severe(mm + " Error: \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34" + e.getMessage());
-                logger.info(mm+" error in here, choice object from ChatGPT: : " + G.toJson(choice));
+                logger.info(mm + " error in here, choice object from ChatGPT: : " + G.toJson(choice));
                 e.printStackTrace();
             }
         }
     }
 
-    private void processPhoneResponse(List<Choice> choices, String possibleCompanyName) {
-        logger.info("\n\n\n" + mm + " processPhoneResponse request type " + "\n\n");
+    private void processPhoneResponse(List<Choice> choices) {
         for (Choice choice : choices) {
             logger.info(mm + " role: " + choice.getMessage().getRole() +
                     "  \uD83D\uDEC4\uD83D\uDEC4\uD83D\uDEC4 content: " + choice.getMessage().getContent()
@@ -320,12 +332,14 @@ public class ChatGPTService {
             try {
                 if (choice.getMessage().getContent().contains("[")) {
                     JSONArray messageArray = new JSONArray(choice.getMessage().getContent());
-                    handlePhone(phoneList, messageArray, possibleCompanyName);
+                    handlePhone(phoneList, messageArray);
                 } else {
-                    JSONObject obj = new JSONObject(choice.getMessage().getContent());
-                    JSONArray arr = new JSONArray();
-                    arr.put(obj);
-                    handlePhone(phoneList, arr, possibleCompanyName);
+                    if (choice.getMessage().getContent().contains("{")) {
+                        JSONObject obj = new JSONObject(choice.getMessage().getContent());
+                        JSONArray arr = new JSONArray();
+                        arr.put(obj);
+                        handlePhone(phoneList, arr);
+                    }
                 }
 
             } catch (JSONException e) {
@@ -335,8 +349,8 @@ public class ChatGPTService {
         }
     }
 
-    private void processAddressResponse(List<Choice> choices, String possibleCompanyName) {
-        logger.info("\n\n\n" + mm + " processAddressResponse request type " + "\n\n");
+    private void processAddressResponse(List<Choice> choices) {
+        //logger.info("\n\n\n" + mm + " processAddressResponse request type " + "\n\n");
         for (Choice choice : choices) {
             logger.info(mm + " role: " + choice.getMessage().getRole() +
                     "  \uD83D\uDEC4\uD83D\uDEC4\uD83D\uDEC4 content: " + choice.getMessage().getContent()
@@ -345,16 +359,18 @@ public class ChatGPTService {
             try {
                 if (choice.getMessage().getContent().contains("[")) {
                     JSONArray messageArray = new JSONArray(choice.getMessage().getContent());
-                    handleAddress(addressList, messageArray,possibleCompanyName);
+                    handleAddress(addressList, messageArray);
                 } else {
-                    JSONObject obj = new JSONObject(choice.getMessage().getContent());
-                    JSONArray arr = new JSONArray();
-                    arr.put(obj);
-                    handleAddress(addressList, arr, possibleCompanyName);
+                    if (choice.getMessage().getContent().contains("{")) {
+                        JSONObject obj = new JSONObject(choice.getMessage().getContent());
+                        JSONArray arr = new JSONArray();
+                        arr.put(obj);
+                        handleAddress(addressList, arr);
+                    }
                 }
             } catch (JSONException e) {
                 logger.severe(mm + " Error: \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34" + e.getMessage());
-                logger.info(mm+"Error in chatGPT choice : " + G.toJson(choice));
+                logger.info(mm + "Error in chatGPT choice : " + G.toJson(choice));
                 e.printStackTrace();
             }
         }
@@ -362,8 +378,11 @@ public class ChatGPTService {
 
     @Nullable
     private String makeTheCall(Request request) throws IOException {
-        logger.info(mm + " makeTheCall:  \uD83D\uDC9A  \uD83D\uDC9A \uD83D\uDC9A" +
-                "Calling ChatGPT via OkHttpClient .......................  \uD83D\uDC9A");
+        logger.info(mm + " ............... makeTheCall for ChatGPT:  " +
+                "\uD83D\uDC9A\uD83D\uDC9A\uD83D\uDC9A" +
+                " Calling ChatGPT using OkHttpClient .......................  " +
+                "\uD83D\uDC9A\uD83D\uDC9A");
+        long start = System.currentTimeMillis();
         String responseBody;
         try (Response mResponse = client.newCall(request).execute()) {
             assert mResponse.body() != null;
@@ -375,10 +394,27 @@ public class ChatGPTService {
                     + G.toJson(error) + " \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34");
             return null;
         }
-        logger.info(mm + mm + mm + " ChatGPT has responded!!  \uD83D\uDC9A \uD83D\uDC9A \uD83D\uDC9A");
+
+        logger.info(mm + " ChatGPT has responded!!  " +
+                "response length: " + responseBody.length() +
+                " bytes. \uD83D\uDC9A \uD83D\uDC9A \uD83D\uDC9A");
+        printElapsed(start);
         return responseBody;
     }
-
+    private static void printElapsed(long startTime) {
+        //
+        long endTime = System.currentTimeMillis();
+        long elapsedTimeMillis = endTime - startTime;
+        double elapsedTimeMinutes = elapsedTimeMillis / 1000.0 / 60;
+        double elapsedTimeSeconds = elapsedTimeMillis / 1000.0;
+        DecimalFormat decimalFormat = new DecimalFormat("#.##");
+        String minutes = decimalFormat.format(elapsedTimeMinutes);
+        String seconds = decimalFormat.format(elapsedTimeSeconds);
+//10210 option 1 tekom technical
+        logger.info(mm+"\uD83C\uDF4A\uD83C\uDF4A\uD83C\uDF4A ChatGPT complete: "
+                + minutes + " elapsed minutes;  " + seconds + " seconds " +
+                "\uD83E\uDD4F \uD83D\uDD35\uD83D\uDD35");
+    }
     private static void buildChatRequest(String string, ChatGPTRequest cr, String prompt) {
         cr.setMessages(new ArrayList<>());
         cr.setModel("gpt-4");
@@ -398,17 +434,20 @@ public class ChatGPTService {
                 .build();
     }
 
-    private void handleEmail(List<Email> emailList, JSONArray obj, String possibleCompanyName) {
+    private void handleEmail(List<Email> emailList, JSONArray obj) {
         logger.info(mm + " .... handling email ....................... JSONArray:" + obj.toString());
 
         for (int i = 0; i < obj.length(); i++) {
             JSONObject mObj = obj.getJSONObject(i);
             Email p = new Email();
-            p.setEmail(mObj.getString("email"));
-            p.setCompany(possibleCompanyName);
-            emailList.add(p);
+            try {
+                p.setEmail(mObj.getString("email"));
+                emailList.add(p);
+            } catch (JSONException e) {
+                logger.severe(mm+ " JSON Error for email: " + e.getMessage());
+            }
         }
-        HashMap<String,Email> map = new HashMap<>();
+        HashMap<String, Email> map = new HashMap<>();
         for (Email email : emailList) {
             map.put(email.getEmail(), email);
         }
@@ -417,16 +456,19 @@ public class ChatGPTService {
         emailList.addAll(mList);
     }
 
-    private static void handlePhone(List<Phone> phoneList, JSONArray obj, String possibleCompanyName) {
+    private static void handlePhone(List<Phone> phoneList, JSONArray obj) {
         logger.info(mm + " .... handling phone ....................... JSONArray:" + obj.toString());
         for (int i = 0; i < obj.length(); i++) {
             JSONObject mObj = obj.getJSONObject(i);
             Phone p = new Phone();
-            p.setPhone(mObj.getString("phone"));
-            p.setCompany(possibleCompanyName);
-            phoneList.add(p);
+            try {
+                p.setPhone(mObj.getString("phone"));
+                phoneList.add(p);
+            } catch (JSONException e) {
+                logger.severe(mm+ " JSON Error for phone: " + e.getMessage());
+            }
         }
-        HashMap<String,Phone> map = new HashMap<>();
+        HashMap<String, Phone> map = new HashMap<>();
         for (Phone p : phoneList) {
             map.put(p.getPhone(), p);
         }
@@ -435,7 +477,7 @@ public class ChatGPTService {
         phoneList.addAll(mList);
     }
 
-    private static void handleAddress(List<Address> addressList, JSONArray obj, String possibleCompanyName) {
+    private static void handleAddress(List<Address> addressList, JSONArray obj) {
         logger.info(mm + " .... handling address ......................................... " +
                 "JSONArray:" + obj.toString());
 
@@ -451,14 +493,13 @@ public class ChatGPTService {
                 arr.setState(mObj.getString("state"));
                 arr.setZip(mObj.getString("zip"));
                 arr.setStreet(mObj.getString("street"));
-                arr.setCompany(possibleCompanyName);
                 addressList.add(arr);
             } catch (JSONException e) {
-                logger.severe(mm + " ERROR: " + e.getMessage());
+                logger.severe(mm + " JSON ERROR while handling address: " + e.getMessage());
             }
         }
 
-        HashMap<String,Address> map = new HashMap<>();
+        HashMap<String, Address> map = new HashMap<>();
         for (Address addr : addressList) {
             map.put(addr.toString(), addr);
         }
@@ -469,7 +510,6 @@ public class ChatGPTService {
 
 
     private String getFinishReason(Choice choice) {
-
         return switch (choice.getFinishReason()) {
             case STOP -> "getFinishReason:  \uD83D\uDC99 Everything's cool with ChatGPT response";
             case LENGTH -> "getFinishReason:  \uD83D\uDC99 The prompt is too long, probably";
@@ -485,7 +525,6 @@ public class ChatGPTService {
     static final String FUNCTION_CALL = "function_call";
     static final String CONTENT_FILTER = "content_filter";
     static final String NULL = "null";
-
 
 
 }

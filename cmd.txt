@@ -37,3 +37,25 @@ mongorestore --uri mongodb+srv://geomaster3:khaya1Son@cluster0.j5rskeq.mongodb.n
 
 //run this to ensure that cloud run works with clouud storage
 gcloud iam service-accounts add-iam-policy-binding 79998394043-compute@developer.gserviceaccount.com --role="roles/iam.serviceAccountTokenCreator" --member="serviceAccount:79998394043-compute@developer.gserviceaccount.com"
+
+//permission for tasks
+   gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:79998394043-compute@developer.gserviceaccount.com --role=roles/cloudtasks.enqueuer
+
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:79998394043-compute@developer.gserviceaccount.com --role=roles/cloudtasks.taskRunner
+
+//stealthcannabis@appspot.gserviceaccount.com
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:stealthcannabis@appspot.gserviceaccount.com --role=roles/cloudtasks.enqueuer
+
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:stealthcannabis@appspot.gserviceaccount.com --role=roles/cloudtasks.taskRunner
+
+//458451555038-compute@developer.gserviceaccount.com
+
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:458451555038-compute@developer.gserviceaccount.com --role=roles/cloudtasks.enqueuer
+
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:458451555038-compute@developer.gserviceaccount.com --role=roles/cloudtasks.taskRunner
+
+//firebase-adminsdk-hupxf@stealthcannabis.iam.gserviceaccount.com
+
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:firebase-adminsdk-hupxf@stealthcannabis.iam.gserviceaccount.com --role=roles/cloudtasks.enqueuer
+
+gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:firebase-adminsdk-hupxf@stealthcannabis.iam.gserviceaccount.com --role=roles/cloudtasks.taskRunner

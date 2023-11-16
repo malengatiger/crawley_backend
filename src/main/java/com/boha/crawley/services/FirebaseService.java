@@ -67,13 +67,13 @@ public class FirebaseService {
     static final String companyData = "companyData";
 
     public void addExtractionData(ExtractionBag extractionBag) throws ExecutionException, InterruptedException {
-        logger.info(mm + " adding stealth data to Firestore ...");
+//        logger.info(mm + " adding stealth data to Firestore ...");
         CollectionReference collectionRef = firestore.collection(extractionData);
         var res = collectionRef.add(extractionBag);
         logger.info(mm + " extraction bag added: " + res.get().getPath());
     }
-    public void addProcessedChatResponse(ChatGPTResponse chatGPTResponse) throws ExecutionException, InterruptedException {
-        logger.info(mm + " adding stealth data to Firestore ...");
+    public void addChatGPTResponse(ChatGPTResponse chatGPTResponse) throws ExecutionException, InterruptedException {
+//        logger.info(mm + " adding stealth data to Firestore ...");
         CollectionReference collectionRef = firestore.collection("chatGPTResponses");
         var res = collectionRef.add(chatGPTResponse);
         logger.info(mm + " chatGPTResponse added: " + res.get().getPath());
@@ -104,26 +104,14 @@ public class FirebaseService {
                 "records found: " + resultList.size());
         return resultList;
     }
-    public int addProcessedChatResponse(ProcessedChatGPTResponse response) throws ExecutionException, InterruptedException {
-        logger.info(mm + " add processed ChatGPTResponse with addresses, emails and phone numbers to Firestore ...");
+    public int addProcessedChatGPTResponse(ProcessedChatGPTResponse response) throws ExecutionException, InterruptedException {
+//        logger.info(mm + " add processed ChatGPTResponse with addresses, emails and phone numbers to Firestore ...");
         CollectionReference collectionRef = firestore.collection(companyData);
         var res = collectionRef.add(response);
         logger.info(mm + " processed ChatGPTResponse data added to Firestore: " + res.get().getPath());
         return 0;
     }
 
-    public List<DomainData> getDomainDataList() throws ExecutionException, InterruptedException {
-
-        CollectionReference collectionRef = firestore.collection(extractionData);
-        Query query = collectionRef.orderBy("domain");
-
-        ApiFuture<QuerySnapshot> querySnapshot = query.get();
-        QuerySnapshot snapshot = querySnapshot.get();
-
-        List<DomainData> domainDataList = snapshot.toObjects(DomainData.class);
-        logger.info(mm + " domain data from Firestore: " + domainDataList.size());
-        return domainDataList;
-    }
     public File downloadFile() throws IOException {
         logger.info(mm + " Download Articles file from cloud storage: " + storage.toString());
         BlobId blobId = BlobId.of(bucketName, fileName);

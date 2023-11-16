@@ -12,6 +12,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -28,6 +29,7 @@ import java.util.logging.Logger;
 @EnableAutoConfiguration
 @EnableWebMvc
 @ComponentScan
+@EnableAsync
 //@ComponentScan(basePackages = "com.boha")
 //@ComponentScan(basePackages = "com.boha.crawley.configs")
 
