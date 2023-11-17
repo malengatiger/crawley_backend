@@ -1,6 +1,11 @@
 package com.boha.crawley.configs;
 
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import com.google.cloud.spring.core.DefaultGcpProjectIdProvider;
+import com.google.cloud.spring.core.GcpProjectIdProvider;
+import com.google.cloud.spring.secretmanager.SecretManagerTemplate;
 import com.google.cloud.tasks.v2.CloudTasksClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.ViewResolver;
@@ -31,6 +36,35 @@ public class WebConfig implements WebMvcConfigurer {
         resolver.setSuffix(".html");
         return resolver;
     }
+//    @Bean
+//    public SecretManagerServiceClient secretManagerServiceClient() throws IOException {
+//        // Create and return an instance of SecretManagerServiceClient
+//        return SecretManagerServiceClient.create();
+//    }
+//    @Bean
+//    public GcpProjectIdProvider projectIdProvider() {
+//
+//        GcpProjectIdProvider provider = new DefaultGcpProjectIdProvider();
+//        logger.info(mm+" " + provider.getProjectId());
+//        return provider;
+//    }
+
+    @Autowired
+    SecretManagerServiceClient secretManagerServiceClient;
+
+//    @Bean
+//    public SecretManagerTemplate secretManagerTemplate(GcpProjectIdProvider projectIdProvider) {
+////        SecretManagerServiceClient secretManagerServiceClient = null;
+//        try {
+//            secretManagerServiceClient = SecretManagerServiceClient.create();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        SecretManagerTemplate template = new SecretManagerTemplate(secretManagerServiceClient, projectIdProvider);
+//        String key = template.getSecretString("chatGPTKey");
+//        logger.info(mm+" chatGPTKey: "+key);
+//        return template;
+//    }
     @Bean
     public CloudTasksClient cloudTasksClient() throws IOException {
         return CloudTasksClient.create();

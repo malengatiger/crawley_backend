@@ -50,8 +50,6 @@ A
 articles-test.csv,8/6/86cb6a272d4ff25779f0519a46cab26bd1e140a7
 e
 5src/main/java/com/boha/crawley/data/ChatResponse.java,f/8/f84c0506e757a9bf094504105442b8a135168aa3
-i
-9src/main/java/com/boha/crawley/services/WhoIsService.java,d/b/db49d0ffd520647a718ae45de07404571c42ff3d
 o
 ?src/main/java/com/boha/crawley/data/chatgpt/ChatGPTRequest.java,f/7/f7c5f999a52eb2f7f5d2ba955be7d581f8b12ffd
 p
@@ -96,8 +94,6 @@ d
 4src/main/java/com/boha/crawley/data/serp/Source.java,c/5/c5bcd5e1163c47d7d00b6c4b88b62ebca9d76a55
 g
 7src/main/java/com/boha/crawley/data/serp/Sitelinks.java,0/f/0fdce709e5825ce748c3be5adf87b53af9d4ec92
-k
-;src/test/java/com/boha/crawley/CrawleyApplicationTests.java,8/2/8282b8cd1b65d9172b19153ec0e5a15440c5b52e
 j
 :src/main/java/com/boha/crawley/GlobalExceptionHandler.java,4/7/47894808759a6172ccd6ea01a84868fae859c542
 q
@@ -106,8 +102,6 @@ l
 <src/main/java/com/boha/crawley/data/freaks/RegistryData.java,3/1/31446ff56ea171b569bb128d0bdedb7dd1481db9
 p
 @src/main/java/com/boha/crawley/data/freaks/TechnicalContact.java,0/1/01e7fe7d2799baf3f7035fa67ec0f738a8611b8f
-c
-3src/main/java/com/boha/crawley/data/DomainData.java,6/8/68e697aa8937e37798901d4cacd472009ecc1369
 r
 Bsrc/main/java/com/boha/crawley/data/freaks/DomainRegistrar__1.java,d/8/d840738994da1458287deddb394a0181c791e878
 q
@@ -148,5 +142,3 @@ Z
 articles.csv,1/e/1e4bc9c948618e5482117e44edfac2d94a875e36
 q
 Asrc/main/java/com/boha/crawley/services/CompanyWebsiteSearch.java,2/f/2f7613783b5ba4a685a993d13a891fccab83c9df
-g
-7src/main/java/com/boha/crawley/services/CSVWarrior.java,c/c/cc7cfa5daf152a4ec74a897f029b543ea7592bd0

@@ -23,6 +23,6 @@
 hs_err_pid*
 replay_pid*
 
-/src/main/resources/credentials.json
+#/src/main/resources/credentials.json
 /src/main/resources/application.properties
 envcfg.txt

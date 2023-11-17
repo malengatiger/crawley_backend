@@ -1,8 +1,10 @@
 package com.boha.crawley;
 
-import com.boha.crawley.services.ArticleService;
-import com.boha.crawley.services.ChatGPTService;
-import com.boha.crawley.services.WhoIsService;
+import com.boha.crawley.services.SecretManagerService;
+import com.boha.crawley.services.SecretManagerUtil;
+import com.google.api.gax.core.CredentialsProvider;
+import com.google.cloud.spring.core.DefaultCredentialsProvider;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -48,13 +50,14 @@ public class CrawleyApplication implements ApplicationListener<ApplicationReadyE
     }
 
 
-//    @Autowired
-//    ArticleService articleService;
+    @Autowired
+    SecretManagerService secretManagerUtil;
 //    @Autowired
 //    ChatGPTService chatGPTService;
 //    @Autowired
 //    WhoIsService whoIsService;
 
+    @SneakyThrows
     @Override
     public void onApplicationEvent(@NotNull ApplicationReadyEvent event) {
         logger.info(mm + " onApplicationEvent ... " + event);
@@ -83,6 +86,15 @@ public class CrawleyApplication implements ApplicationListener<ApplicationReadyE
         for (String pint : pints) {
             logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 endPoint: " + pint);
         }
+//        CredentialsProvider credentialsProvider = new DefaultCredentialsProvider();
+//        SecretManagerService service = new SecretManagerService(credentialsProvider);
+//
+//        String projectId = "stealthcannabis";
+//        String secretId = "chatGPTKey";
+//        String versionId = "latest";
+
+        String secret = secretManagerUtil.getChatGPTSecret();
+        logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 chatGPTKey: " + secret);
 
 //
     }

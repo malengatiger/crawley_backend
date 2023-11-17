@@ -60,10 +60,6 @@ p
 @src/main/java/com/boha/crawley/data/chatgpt/ChatGPTResponse.java,2/2/22c52b912be9fae7f358c032220fcd0c9c3fbba6
 g
 7src/main/java/com/boha/crawley/data/chatgpt/Choice.java,a/1/a1b68fbc643a4cf7de69ba444a17d3395585a2bb
-k
-;src/test/java/com/boha/crawley/CrawleyApplicationTests.java,8/2/8282b8cd1b65d9172b19153ec0e5a15440c5b52e
-c
-3src/main/java/com/boha/crawley/data/DomainData.java,6/8/68e697aa8937e37798901d4cacd472009ecc1369
 o
 ?src/main/java/com/boha/crawley/data/freaks/DomainRegistrar.java,c/b/cbddba02cbbea2326da5b63ab4f60988a616fb65
 r
@@ -138,12 +134,8 @@ Z
 *spreadsheets/spreadsheet_1699841661179.csv,2/b/2b36427e75cdca06f148de95fe88d6198f471072
 Z
 *spreadsheets/spreadsheet_1699841800432.csv,9/f/9fd6cf23a95fae773fdf58e41d8256b2ec9c8087
-i
-9src/main/java/com/boha/crawley/services/WhoIsService.java,d/b/db49d0ffd520647a718ae45de07404571c42ff3d
 q
 Asrc/main/java/com/boha/crawley/data/freaks/FreaksWhoIsRecord.java,8/e/8e6f3324f9a5d34de81189a226245fb93b337a28
-g
-7src/main/java/com/boha/crawley/services/CSVWarrior.java,c/c/cc7cfa5daf152a4ec74a897f029b543ea7592bd0
 D
 googleNLPService.txt,0/2/02a3dbc1ac3161f36aecec96778d0865b8b7c67c
 <

@@ -78,19 +78,19 @@
             <scope>compile</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/edu.stanford.nlp/stanford-corenlp -->
-<!--        <dependency>-->
-<!--            <groupId>edu.stanford.nlp</groupId>-->
-<!--            <artifactId>stanford-corenlp</artifactId>-->
-<!--            <version>4.5.5</version>-->
-<!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>edu.stanford.nlp</groupId>-->
+        <!--            <artifactId>stanford-corenlp</artifactId>-->
+        <!--            <version>4.5.5</version>-->
+        <!--        </dependency>-->
 
 
-<!--        <dependency>-->
-<!--            <groupId>edu.stanford.nlp</groupId>-->
-<!--            <artifactId>stanford-corenlp</artifactId>-->
-<!--            <version>4.5.5</version>-->
-<!--            <classifier>models</classifier>-->
-<!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>edu.stanford.nlp</groupId>-->
+        <!--            <artifactId>stanford-corenlp</artifactId>-->
+        <!--            <version>4.5.5</version>-->
+        <!--            <classifier>models</classifier>-->
+        <!--        </dependency>-->
         <!-- https://mvnrepository.com/artifact/commons-net/commons-net -->
         <dependency>
             <groupId>commons-net</groupId>
@@ -123,14 +123,12 @@
         <dependency>
             <groupId>com.google.api-client</groupId>
             <artifactId>google-api-client</artifactId>
-            <version>1.32.1</version>
         </dependency>
 
         <!-- Google OAuth2 Client -->
         <dependency>
             <groupId>com.google.oauth-client</groupId>
             <artifactId>google-oauth-client</artifactId>
-            <version>1.33.3</version>
         </dependency>
 
         <!-- Google HTTP Client (Javanet) -->
@@ -204,6 +202,16 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-tasks</artifactId>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.cloud/google-cloud-secretmanager -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-secretmanager</artifactId>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.cloud/spring-cloud-gcp-starter-secretmanager -->
+<!--        <dependency>-->
+<!--            <groupId>com.google.cloud</groupId>-->
+<!--            <artifactId>spring-cloud-gcp-starter-secretmanager</artifactId>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-streams</artifactId>

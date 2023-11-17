@@ -39,8 +39,8 @@ public class ChatGPTService {
     static final Gson G = new GsonBuilder().setPrettyPrinting().create();
     @Autowired
     private FirebaseService firebaseService;
-    @Value("${chatGPTKey}")
-    public String chatGPTKey;
+    @Autowired
+    private SecretManagerUtil secretService;
 
     public ChatGPTService() {
         client = new OkHttpClient.Builder()
@@ -140,11 +140,7 @@ public class ChatGPTService {
     List<Address> addressList = new ArrayList<>();
     List<Email> emailList = new ArrayList<>();
     List<Phone> phoneList = new ArrayList<>();
-    ProcessedChatGPTResponse response = new ProcessedChatGPTResponse(
-            UUID.randomUUID().toString(),
-            new DateTime(new Date()).toString(),
-            addressList, emailList, phoneList
-    );
+
 
     private List<String> getCompanyNamesFromList(List<String> possibleNames) throws IOException {
         StringBuilder sb = new StringBuilder();
@@ -231,14 +227,22 @@ public class ChatGPTService {
         if (textFromSERP == null || textFromSERP.isEmpty()) {
             return null;
         }
-        findCompanyDetailsFromText(textFromSERP, PHONE);
-        findCompanyDetailsFromText(textFromSERP, EMAIL);
-        findCompanyDetailsFromText(textFromSERP, ADDRESS);
+
+        ProcessedChatGPTResponse response = new ProcessedChatGPTResponse(
+                UUID.randomUUID().toString(),
+                new DateTime(new Date()).toString(),
+                addressList, emailList, phoneList
+        );
+
+        findCompanyDetails(textFromSERP, PHONE, response);
+        findCompanyDetails(textFromSERP, EMAIL, response);
+        findCompanyDetails(textFromSERP, EMAIL, response);
+
 
         return response;
     }
 
-    private void findCompanyDetailsFromText(String textFromSERP, int type) {
+    private void findCompanyDetails(String textFromSERP, int type,  ProcessedChatGPTResponse response) {
         logger.info(mm + "... finding company details from textFromSERP, type: " + type);
         ChatGPTRequest cr = new ChatGPTRequest();
         String addressFormat = "Each of the result json objects should have 6 JSON fields: street, city, street, zip, state, country";
@@ -272,13 +276,13 @@ public class ChatGPTService {
             ChatGPTResponse chatGPTResponse = G.fromJson(responseBody, ChatGPTResponse.class);
             switch (type) {
                 case PHONE:
-                    processPhoneResponse(chatGPTResponse.getChoices());
+                    processPhoneResponse(chatGPTResponse.getChoices(), response);
                     break;
                 case EMAIL:
-                    processEmailResponse(chatGPTResponse.getChoices());
+                    processEmailResponse(chatGPTResponse.getChoices(), response);
                     break;
                 case ADDRESS:
-                    processAddressResponse(chatGPTResponse.getChoices());
+                    processAddressResponse(chatGPTResponse.getChoices(), response);
                     break;
                 default:
                     break;
@@ -296,7 +300,8 @@ public class ChatGPTService {
         }
     }
 
-    private void processEmailResponse(List<Choice> choices) {
+    private void processEmailResponse(List<Choice> choices,  ProcessedChatGPTResponse response) {
+        emailList.clear();
         for (Choice choice : choices) {
             logger.info(mm + " role: " + choice.getMessage().getRole() +
                     "  \uD83D\uDEC4\uD83D\uDEC4\uD83D\uDEC4 content: " + choice.getMessage().getContent()
@@ -321,9 +326,11 @@ public class ChatGPTService {
                 e.printStackTrace();
             }
         }
+        response.setEmailList(emailList);
     }
 
-    private void processPhoneResponse(List<Choice> choices) {
+    private void processPhoneResponse(List<Choice> choices,  ProcessedChatGPTResponse response) {
+        phoneList.clear();
         for (Choice choice : choices) {
             logger.info(mm + " role: " + choice.getMessage().getRole() +
                     "  \uD83D\uDEC4\uD83D\uDEC4\uD83D\uDEC4 content: " + choice.getMessage().getContent()
@@ -347,10 +354,12 @@ public class ChatGPTService {
                 e.printStackTrace();
             }
         }
+        response.setPhoneList(phoneList);
     }
 
-    private void processAddressResponse(List<Choice> choices) {
+    private void processAddressResponse(List<Choice> choices,  ProcessedChatGPTResponse response) {
         //logger.info("\n\n\n" + mm + " processAddressResponse request type " + "\n\n");
+        addressList.clear();
         for (Choice choice : choices) {
             logger.info(mm + " role: " + choice.getMessage().getRole() +
                     "  \uD83D\uDEC4\uD83D\uDEC4\uD83D\uDEC4 content: " + choice.getMessage().getContent()
@@ -374,6 +383,7 @@ public class ChatGPTService {
                 e.printStackTrace();
             }
         }
+        response.setAddressList(addressList);
     }
 
     @Nullable
@@ -429,7 +439,7 @@ public class ChatGPTService {
         return new Request.Builder()
                 .url(API_URL)
                 .post(body)
-                .addHeader("Authorization", "Bearer " + chatGPTKey)
+                .addHeader("Authorization", "Bearer " + secretService.getChatAPIKey())
                 .addHeader("Content-Type", "application/json")
                 .build();
     }

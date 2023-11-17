@@ -59,3 +59,17 @@ gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:4
 gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:firebase-adminsdk-hupxf@stealthcannabis.iam.gserviceaccount.com --role=roles/cloudtasks.enqueuer
 
 gcloud projects add-iam-policy-binding stealthcannabis --member=serviceAccount:firebase-adminsdk-hupxf@stealthcannabis.iam.gserviceaccount.com --role=roles/cloudtasks.taskRunner
+
+//secrets
+gcloud secrets add-iam-policy-binding chatGPTKey \
+  --member='serviceAccount:stealthcannabis@appspot.gserviceaccount.com ' \
+  --project=stealthcannabis \
+  --role='roles/secretmanager.secretAccessor'
+
+  //create service account
+  gcloud iam service-accounts create stealth-secret-manager
+  //handle IAM policy
+  gcloud projects add-iam-policy-binding stealthcannabis --member="serviceAccount:stealth-secret-manager@stealthcannabis.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+
+//
+gcloud iam service-accounts get-iam-policy stealth-secret-manager@stealthcannabis.iam.gserviceaccount.com --format json

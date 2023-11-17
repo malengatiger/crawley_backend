@@ -37,12 +37,11 @@ public class MainController {
     private final CSVWarrior csvWarrior;
     @Autowired
     ArticleService articleService;
-    @Autowired
-    WhoIsService whoIsService;
+
     @Autowired
     ChatGPTService chatGPTService;
     @Autowired
-    CloudTasksService cloudTasksService;
+    SecretManagerUtil secretManagerUtil;
 
     @GetMapping("/")
     public String hello() {
@@ -88,18 +87,7 @@ public class MainController {
         return "index.html";
     }
 
-    @GetMapping("getDomainInfo")
-    public ResponseEntity<Object> getDomainInfo(@RequestParam String domain) {
-        try {
-            var res = whoIsService.getDomainDetails(domain);
-            return ResponseEntity.ok().body(res);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                    new CustomResponse(400,
-                            "getDomainInfo failed: " + e.getMessage(),
-                            df.format(new Date())));
-        }
-    }
+
 
     @GetMapping("getCompanyNamesFromText")
     public ResponseEntity<Object> getCompanyNamesFromText(@RequestParam String text) {
@@ -111,6 +99,18 @@ public class MainController {
             return ResponseEntity.badRequest().body(
                     new CustomResponse(400,
                             "getDomainInfo failed: " + e.getMessage(),
+                            df.format(new Date())));
+        }
+    }
+    @GetMapping("getChatGPTKey")
+    public ResponseEntity<Object> getChatGPTKey() {
+        try {
+            String mText = secretManagerUtil.getChatAPIKey();
+            return ResponseEntity.ok().body(mText);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new CustomResponse(400,
+                            "getChatGPTKey failed: " + e.getMessage(),
                             df.format(new Date())));
         }
     }

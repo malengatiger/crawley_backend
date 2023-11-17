@@ -1,7 +1,5 @@
 package com.boha.crawley.data;
 
-import com.boha.crawley.data.freaks.FreaksWhoIsRecord;
-import com.boha.crawley.services.FreaksWhoIsService;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 

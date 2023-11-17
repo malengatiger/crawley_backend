@@ -1,6 +1,5 @@
 package com.boha.crawley.services;
 
-import com.boha.crawley.data.ExtractionBag;
 import com.boha.crawley.data.serp.OrganicResult;
 import com.boha.crawley.data.serp.SERPResponse;
 import com.google.gson.Gson;
@@ -9,7 +8,6 @@ import com.google.gson.JsonSyntaxException;
 import lombok.RequiredArgsConstructor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +27,6 @@ import java.util.logging.Logger;
 
 @Service
 @RequiredArgsConstructor
-
 public class SERPService {
     static final Logger logger = Logger.getLogger(SERPService.class.getSimpleName());
     static final String mm = "\uD83E\uDD6C\uD83E\uDD6C SERPService: " +
@@ -39,17 +36,11 @@ public class SERPService {
     @Value("${serpApiKey}")
     private String serpApiKey;
 
-    private final OkHttpClient client;
+
+    private final SecretManagerUtil secretService;
     static final MediaType mediaType = MediaType.parse("application/json");
 
-    public SERPService() {
-        client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS) // Set the maximum time to establish a connection
-                .readTimeout(600, TimeUnit.SECONDS) // Set the maximum time to read data from the server
-                .writeTimeout(600, TimeUnit.SECONDS) // Set the maximum time to write data to the server
-                .retryOnConnectionFailure(true)
-                .build();
-    }
+
 
 //    public static void main(String[] args) {
 //        SERPService service = new SERPService();
@@ -69,7 +60,7 @@ public class SERPService {
 
             // Build the request URL
             String requestUrl = SERP_URL
-                    + serpApiKey
+                    + "sssssss" //secretService.getSerpApiKey()
                     + "&q=" + encodedQuery;
 
             URL mUrl = new URL(requestUrl);
