@@ -98,180 +98,85 @@ public class ArticleService {
     public void parseArticles(List<Article> articles, String email) throws Exception {
         logger.info(mm + " parse Articles starting ..........");
         long startTime = System.currentTimeMillis();
-        List<ExtractionBag> extractionBags;
+
+        List<ProcessedChatGPTResponse> processedChatGPTResponses = new ArrayList<>();
 
         int totAddr = 0;
         int totEmail = 0;
         int totPhone = 0;
-        int numberOfSpreadsheetLines = 0;
+        int companies = 0;
         String requestId = UUID.randomUUID().toString();
         String userUrl = stealthUrl + "getSpreadsheet?requestId=" + requestId;
 
-        try {
-            logger.info(mm + "parseArticles: Do we get here with " + articles.size() + " articles? ..............................");
-            extractionBags = getExtractedData(articles, email);
-
-            for (ExtractionBag extractionBag : extractionBags) {
-                if (extractionBag.getText() == null || extractionBag.getText().isEmpty()) {
-                    continue;
-                }
-                String filteredText = NameExtractor.extractPossibleNames(extractionBag.getText());
-                List<String> pNames = chatGPTService.getCompanyNamesFromText(filteredText);
-                if (!pNames.isEmpty()) {
-                    ProcessedChatGPTResponse resp = bossService.digForData(pNames);
-                    String id = UUID.randomUUID().toString();
-                    try {
-                        if (resp != null) {
-                            resp.setRequesterEmail(email);
-                            resp.setArticle(extractionBag.getArticle());
-                            resp.setResponseId(id);
-                            resp.setRequestId(requestId);
-                            int ok = firebaseService.addProcessedChatGPTResponse(resp);
-                            if (ok == 0) {
-                                totAddr += resp.getAddressList().size();
-                                totEmail += resp.getEmailList().size();
-                                totPhone += resp.getPhoneList().size();
-                                numberOfSpreadsheetLines++;
-                                logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle());
-                                logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
-                                        "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
-                                //todo -- create self api url that creates csv, send email ...
-                            }
+        for (Article article : articles) {
+            var extractionBag = extractDataFromPage(article);
+            if (extractionBag.getText() == null || extractionBag.getText().isEmpty()) {
+                continue;
+            }
+            String filteredText = NameExtractor.extractPossibleNames(extractionBag.getText());
+            List<String> pNames = chatGPTService.getCompanyNamesFromText(filteredText);
+            if (!pNames.isEmpty()) {
+                ProcessedChatGPTResponse resp = bossService.digForData(pNames);
+                String id = UUID.randomUUID().toString();
+                try {
+                    if (resp != null) {
+                        resp.setRequesterEmail(email);
+                        resp.setArticle(extractionBag.getArticle());
+                        resp.setResponseId(id);
+                        resp.setRequestId(requestId);
+                        int ok = firebaseService.addProcessedChatGPTResponse(resp);
+                        if (ok == 0) {
+                            processedChatGPTResponses.add(resp);
+                            logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle()
+                            + "\n addresses: " + resp.getAddressList().size()
+                            + " phone numbers: " + resp.getPhoneList()
+                            + " email addresses: " + resp.getEmailList().size()
+                            + " companies found: " + resp.getCompanies().size());
+                            logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
+                                    "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
+                            //todo -- create self api url that creates csv, send email ...
                         }
-                    } catch (ExecutionException | InterruptedException e) {
-                        logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
-                                + e.getMessage());
-                        e.printStackTrace();
                     }
-                } else {
-                    logger.info(mm + " \uD83D\uDD35 no companies found in text " +
-                            "\uD83D\uDD35\uD83D\uDD35\uD83D\uDD35 ");
-                    if (extractionBag.getArticle() != null) {
-                        logger.info(mm + "Article with no companies: " + extractionBag.getArticle().getTitle());
-                    }
+                } catch (ExecutionException | InterruptedException e) {
+                    logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
+                            + e.getMessage());
+                    e.printStackTrace();
+                }
+            } else {
+                logger.info(mm + " \uD83D\uDD35 no companies found in text " +
+                        "\uD83D\uDD35\uD83D\uDD35\uD83D\uDD35 ");
+                if (extractionBag.getArticle() != null) {
+                    logger.info(mm + "... Article with no companies: " + extractionBag.getArticle().getTitle());
                 }
             }
-            logger.info(mm + " Number of Spreadsheet lines: " + numberOfSpreadsheetLines);
-            //send email
-            var addr = NumberFormat.getNumberInstance().format(totAddr);
-            var email1 = NumberFormat.getNumberInstance().format(totEmail);
-            var phone = NumberFormat.getNumberInstance().format(totPhone);
+        }
+        for (ProcessedChatGPTResponse pr : processedChatGPTResponses) {
+            totAddr += pr.getAddressList().size();
+            totPhone += pr.getPhoneList().size();
+            totEmail += pr.getEmailList().size();
+            companies += pr.getCompanies().size();
 
-            if (!extractionBags.isEmpty()) {
-                sendEmail(addr, email1, phone, 200, email, userUrl);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            sendEmail("", "", "", 400, email, userUrl);
-            throw e;
+        }
+        NumberFormat nf = NumberFormat.getNumberInstance();
+        if (!processedChatGPTResponses.isEmpty()) {
+            sendEmail(nf.format(companies), nf.format(totAddr), nf.format(totEmail), nf.format(totPhone),200,email,userUrl);
+        } else {
+            sendEmail(null,null,null,null,400,email,userUrl);
         }
 
 
-        logger.info("\n" + mm + " WORK COMPLETED! ... extracted data added: " + extractionBags.size()
+        logger.info("\n" + mm + " WORK COMPLETED! ... extracted data added: " + processedChatGPTResponses.size()
                 + " articles processed \uD83D\uDD35\uD83D\uDD35 ");
 
-        printElapsed(startTime, extractionBags);
-
-    }
-
-    public List<ProcessedChatGPTResponse> parseArticlesSync(File articleFile, String email) throws Exception {
-        logger.info(mm + " parse Articles starting ..........");
-        long startTime = System.currentTimeMillis();
-        List<ExtractionBag> extractionBags;
-        List<ProcessedChatGPTResponse> responses = new ArrayList<>();
-        if (articleFile == null) {
-            articleFile = firebaseService.downloadFile();
-        }
-        logger.info(mm + mm + " parseArticles: we have a file!! ");
-        if (!articleFile.exists()) {
-            throw new RuntimeException();
-        }
-
-        logger.info(mm + " articles file: " + articleFile.getAbsolutePath()
-                + " length: " + articleFile.length() + " bytes");
-
-        int totAddr = 0;
-        int totEmail = 0;
-        int totPhone = 0;
-        int numberOfSpreadsheetLines = 0;
-        String requestId = UUID.randomUUID().toString();
-        String userUrl = stealthUrl + "getSpreadsheet?requestId=" + requestId;
-
-        try {
-            var articles = getArticlesFromFile(articleFile);
-            logger.info(mm + "parseArticles: Do we get here with " + articles.size() + " articles? ..............................");
-            extractionBags = getExtractedData(articles, email);
-
-            for (ExtractionBag extractionBag : extractionBags) {
-                if (extractionBag.getText() == null || extractionBag.getText().isEmpty()) {
-                    continue;
-                }
-                List<String> pNames = chatGPTService.getCompanyNamesFromText(extractionBag.getText());
-                if (!pNames.isEmpty()) {
-                    ProcessedChatGPTResponse resp = bossService.digForData(pNames);
-                    String id = UUID.randomUUID().toString();
-                    try {
-                        if (resp != null) {
-                            resp.setRequesterEmail(email);
-                            resp.setArticle(extractionBag.getArticle());
-                            resp.setResponseId(id);
-                            resp.setRequestId(requestId);
-                            int ok = firebaseService.addProcessedChatGPTResponse(resp);
-                            if (ok == 0) {
-                                totAddr += resp.getAddressList().size();
-                                totEmail += resp.getEmailList().size();
-                                totPhone += resp.getPhoneList().size();
-                                numberOfSpreadsheetLines++;
-                                responses.add(resp);
-                                logger.info("\n\n" + mm + " Article processed: " + extractionBag.getArticle().getTitle());
-                                logger.info(mm + " work complete for article \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F " +
-                                        "...... ProcessedChatGPTResponse created for: " + resp.getArticle().getTitle() + "  \n\n");
-                                //todo -- create self api url that creates csv, send email ...
-                            }
-                        }
-                    } catch (ExecutionException | InterruptedException e) {
-                        logger.severe(mm + " We fucked, Boss! \uD83D\uDD34\uD83D\uDD34\uD83D\uDD34\uD83D\uDD34"
-                                + e.getMessage());
-                        e.printStackTrace();
-                    }
-                } else {
-                    logger.info(mm + " \uD83D\uDD35 no companies found in text " +
-                            "\uD83D\uDD35\uD83D\uDD35\uD83D\uDD35 ");
-                    if (extractionBag.getArticle() != null) {
-                        logger.info(mm + "Article with no companies: " + extractionBag.getArticle().getTitle());
-                    }
-                }
-            }
-            logger.info(mm + " Number of Spreadsheet lines: " + numberOfSpreadsheetLines);
-            //send email
-            var addr = NumberFormat.getNumberInstance().format(totAddr);
-            var email1 = NumberFormat.getNumberInstance().format(totEmail);
-            var phone = NumberFormat.getNumberInstance().format(totPhone);
-
-            if (!extractionBags.isEmpty()) {
-                sendEmail(addr, email1, phone, 200, email, userUrl);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            sendEmail("", "", "", 400, email, userUrl);
-            throw e;
-        }
-
-
-        logger.info("\n" + mm + " WORK COMPLETED! ... extracted data added: " + extractionBags.size()
-                + " articles processed \uD83D\uDD35\uD83D\uDD35 ");
-
-        printElapsed(startTime, extractionBags);
-        return responses;
+        printElapsed(startTime, processedChatGPTResponses);
 
     }
 
     @Value("${stealthUrl}")
     private String stealthUrl;
 
-    private void sendEmail(String totAddr, String totEmail, String totPhone, int status,
+
+    private void sendEmail(String totCompanies, String totAddr, String totEmail, String totPhone, int status,
                            String recipient, String documentUrl) throws MessagingException {
         String htmlContent;
         String subject;
@@ -280,22 +185,24 @@ public class ArticleService {
             // Create the HTML content
             htmlContent = "<html><body><h2> StealthCannabisApp </h2>" +
                     "<h4> " + subject + "</h4>" +
-                    "<p> StealthCannabisApp has processed your request and " + totAddr + " address records, " +
-                    totEmail + " email records and " + totPhone + " telephone number records were found. " +
+                    "<p> <b>StealthCannabisApp</b> has processed your request and <b> " + totAddr + " </> address records, <b>" +
+                    totEmail + "</b> email records and <b>" + totPhone + "</b> telephone number records were found. </p>" +
+                    "<p><b>"+totCompanies+"</b> companies were mentioned in the articles>" +
                     "A file of the response has been created for you. Click to start the download.</p>"
                     + "<p><a href=\"" + documentUrl + "\"><b>Click to download Spreadsheet</b></a></p></body></html>";
 
         } else {
             subject = "Error in your request";
             htmlContent = "<html><body><h4> StealthCannabisApp Error Response</h4>" +
-                    "<p> StealthCannabisApp tried to process your request and ran into an error. Please retry your request. Sorry!</p>";
+                    "<p> StealthCannabisApp tried to process your request and ran into an error processing your spreadsheet. </p>" +
+                    "<p>Please retry your request. Sorry!</p>";
         }
 
         emailService.sendEmail(recipient, subject, htmlContent);
         logger.info(mm + " Email sent containing link: " + documentUrl);
     }
 
-    private static void printElapsed(long startTime, List<ExtractionBag> dataList) {
+    private static void printElapsed(long startTime, List<ProcessedChatGPTResponse> dataList) {
         //
         long endTime = System.currentTimeMillis();
         long elapsedTimeMillis = endTime - startTime;

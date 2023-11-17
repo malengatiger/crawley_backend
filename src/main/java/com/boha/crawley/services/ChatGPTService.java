@@ -31,6 +31,8 @@ OpenAI, Solly Sombra, Citi Bank, Massey Ferguson
 @Service
 @RequiredArgsConstructor
 public class ChatGPTService {
+    @Value("${chatGPTKey}")
+    private String chatGPTKey;
     static final Logger logger = Logger.getLogger(ArticleService.class.getSimpleName());
     static final String mm = "\uD83C\uDF6F ChatGPTService: \uD83C\uDF6F\uD83C\uDF6F\uD83C\uDF6F";
     private static final String API_URL =
@@ -234,9 +236,15 @@ public class ChatGPTService {
                 addressList, emailList, phoneList
         );
 
-        findCompanyDetails(textFromSERP, PHONE, response);
-        findCompanyDetails(textFromSERP, EMAIL, response);
-        findCompanyDetails(textFromSERP, EMAIL, response);
+        try {
+            findCompanyDetails(textFromSERP, PHONE, response);
+            findCompanyDetails(textFromSERP, EMAIL, response);
+            findCompanyDetails(textFromSERP, EMAIL, response);
+        } catch (Exception e) {
+            logger.severe(mm+" Error digging for company details: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
 
 
         return response;
@@ -439,7 +447,7 @@ public class ChatGPTService {
         return new Request.Builder()
                 .url(API_URL)
                 .post(body)
-                .addHeader("Authorization", "Bearer " + secretService.getChatAPIKey())
+                .addHeader("Authorization", "Bearer " + chatGPTKey)
                 .addHeader("Content-Type", "application/json")
                 .build();
     }

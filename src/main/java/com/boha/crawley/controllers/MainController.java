@@ -5,6 +5,7 @@ import com.boha.crawley.data.StealthMessage;
 import com.boha.crawley.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,7 +38,8 @@ public class MainController {
     private final CSVWarrior csvWarrior;
     @Autowired
     ArticleService articleService;
-
+    @Value("${chatGPTKey}")
+    private String chatGPTKey;
     @Autowired
     ChatGPTService chatGPTService;
     @Autowired
@@ -99,18 +101,6 @@ public class MainController {
             return ResponseEntity.badRequest().body(
                     new CustomResponse(400,
                             "getDomainInfo failed: " + e.getMessage(),
-                            df.format(new Date())));
-        }
-    }
-    @GetMapping("getChatGPTKey")
-    public ResponseEntity<Object> getChatGPTKey() {
-        try {
-            String mText = secretManagerUtil.getChatAPIKey();
-            return ResponseEntity.ok().body(mText);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                    new CustomResponse(400,
-                            "getChatGPTKey failed: " + e.getMessage(),
                             df.format(new Date())));
         }
     }

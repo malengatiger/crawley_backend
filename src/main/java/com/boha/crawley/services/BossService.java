@@ -42,7 +42,8 @@ public class BossService {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            logger.info(mm+" Unable to handle " + possibleCompanyNames + " possible companies: " + e.getMessage());
+            e.printStackTrace();
         }
         if (processedChatGPTResponse != null) {
             processedChatGPTResponse.setCompanies(names);

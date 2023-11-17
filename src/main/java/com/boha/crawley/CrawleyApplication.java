@@ -93,8 +93,8 @@ public class CrawleyApplication implements ApplicationListener<ApplicationReadyE
 //        String secretId = "chatGPTKey";
 //        String versionId = "latest";
 
-        String secret = secretManagerUtil.getChatGPTSecret();
-        logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 chatGPTKey: " + secret);
+//        String secret = secretManagerUtil.getChatGPTSecret();
+//        logger.info(mm + " \uD83D\uDD35\uD83D\uDD35 chatGPTKey: " + secret);
 
 //
     }

@@ -28,8 +28,8 @@ public class SecretManagerService {
 
     @Value("${chatGPTKey}")
     private String chatGPTKey;
-    @Value("${chatGPTKeyVersion}")
-    private String chatGPTKeyVersion;
+//    @Value("${chatGPTKeyVersion}")
+//    private String chatGPTKeyVersion;
 
     public String getChatGPTSecret() {
         try (SecretManagerServiceClient client = createSecretManagerServiceClient()) {
